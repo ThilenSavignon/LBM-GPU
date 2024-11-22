@@ -32,3 +32,5 @@ f[:, C] = rho_0*4/9.
 f[:, [E, S, W, N]] = rho_0/9
 f[:,[NE, SE, SW, NW]] = rho_0/36
 # end initial values
+
+print(np.extract(mesh==0, mesh))
