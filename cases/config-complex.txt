@@ -1,0 +1,14 @@
+iterations           = 24000
+width                = 800
+height               = 160
+#obstacle_r           = 32
+obstacle_x           = 0
+obstacle_y           = 0
+reynolds             = 500
+inflow_max_velocity  = 0.100000
+inflow_max_velocity  = 0.100000
+output_filename     = output.raw
+write_interval       = 100
+obstacle_filename    = cases/complex.png
+obstacle_scale       = 0.5
+#obstacle_rotate      = 20
