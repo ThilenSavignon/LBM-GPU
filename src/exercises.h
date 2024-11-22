@@ -66,6 +66,7 @@ void lbm_do_step_ex5(lbm_comm_t * comm, lbm_mesh_type_t * mesh_type, lbm_mesh_t 
 
 /****************************************************/
 //async
+void lbm_comm_init( lbm_comm_t * comm, int total_width, int total_height );
 void lbm_comm_init_ex6( lbm_comm_t * comm, int total_width, int total_height );
 void lbm_comm_release_ex6( lbm_comm_t * comm );
 void lbm_comm_ghost_exchange_ex6(lbm_comm_t * comm, lbm_mesh_t * mesh );

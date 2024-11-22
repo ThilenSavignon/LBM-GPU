@@ -32,21 +32,6 @@ void lbm_comm_init_ex_select( lbm_comm_t * comm, int total_width, int total_heig
 		case 0:
 			lbm_comm_init_ex0(comm, total_width, total_height);
 			break;
-		case 1:
-			lbm_comm_init_ex1(comm, total_width, total_height);
-			break;
-		case 2:
-			lbm_comm_init_ex2(comm, total_width, total_height);
-			break;
-		case 3:
-			lbm_comm_init_ex3(comm, total_width, total_height);
-			break;
-		case 4:
-			lbm_comm_init_ex4(comm, total_width, total_height);
-			break;
-		case 5:
-			lbm_comm_init_ex5(comm, total_width, total_height);
-			break;
 		case 6:
 			lbm_comm_init_ex6(comm, total_width, total_height);
 			break;
@@ -79,21 +64,6 @@ void lbm_comm_release_ex_select( lbm_comm_t * comm )
 		case 0:
 			lbm_comm_release_ex0(comm);
 			break;
-		case 1:
-			lbm_comm_release_ex0(comm);
-			break;
-		case 2:
-			lbm_comm_release_ex0(comm);
-			break;
-		case 3:
-			lbm_comm_release_ex0(comm);
-			break;
-		case 4:
-			lbm_comm_release_ex4(comm);
-			break;
-		case 5:
-			lbm_comm_release_ex5(comm);
-			break;
 		case 6:
 			lbm_comm_release_ex6(comm);
 			break;
@@ -109,21 +79,6 @@ void lbm_comm_ghost_exchange_ex_select(lbm_comm_t * comm, lbm_mesh_t * mesh )
 	switch(gblExercice) {
 		case 0:
 			lbm_comm_ghost_exchange_ex0(comm, mesh);
-			break;
-		case 1:
-			lbm_comm_ghost_exchange_ex1(comm, mesh);
-			break;
-		case 2:
-			lbm_comm_ghost_exchange_ex2(comm, mesh);
-			break;
-		case 3:
-			lbm_comm_ghost_exchange_ex3(comm, mesh);
-			break;
-		case 4:
-			lbm_comm_ghost_exchange_ex4(comm, mesh);
-			break;
-		case 5:
-			lbm_comm_ghost_exchange_ex5(comm, mesh);
 			break;
 		case 6:
 			lbm_comm_ghost_exchange_ex6(comm, mesh);
@@ -141,21 +96,6 @@ void lbm_save_ex_select(lbm_file_mesh_t * save_buffer, lbm_comm_t * comm, lbm_me
 		case 0:
 			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
 			break;
-		case 1:
-			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
-			break;
-		case 2:
-			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
-			break;
-		case 3:
-			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
-			break;
-		case 4:
-			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
-			break;
-		case 5:
-			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
-			break;
 		case 6:
 			lbm_save_ex0(save_buffer, comm, mesh_to_save, mesh_type, write_step);
 			break;
@@ -170,21 +110,6 @@ void lbm_do_step_ex_select(lbm_comm_t * comm, lbm_mesh_type_t * mesh_type, lbm_m
 {
 	switch(gblExercice) {
 		case 0:
-			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
-			break;
-		case 1:
-			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
-			break;
-		case 2:
-			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
-			break;
-		case 3:
-			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
-			break;
-		case 4:
-			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
-			break;
-		case 5:
 			lbm_do_step_ex0(comm, mesh_type, mesh, temp_mesh );
 			break;
 		case 6:

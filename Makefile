@@ -3,7 +3,7 @@ CC=gcc
 MPICC=mpicc
 
 #enable/disable
-ENABLE_MAGICK_WAND=false
+ENABLE_MAGICK_WAND=true
 ENABLE_COLORS=true
 ENABLE_AUTO_CORRECTION=true
 
@@ -34,11 +34,6 @@ LBM_LIB_SOURCES=src/lbm_phys.c \
                 src/lbm_config.c \
                 src/lbm_save.c \
                 exercise_0.c \
-                exercise_1$(MODE).c \
-                exercise_2$(MODE).c \
-                exercise_3$(MODE).c \
-                exercise_4$(MODE).c \
-                exercise_5$(MODE).c \
                 exercise_6$(MODE).c \
                 src/exercises.c
 
@@ -133,11 +128,6 @@ objs/src/lbm_comm.o: src/lbm_comm.h src/lbm_struct.h src/lbm_config.h
 objs/src/lbm_config.o: src/lbm_config.h
 objs/src/lbm_save.o: src/lbm_phys.h src/lbm_struct.h src/lbm_config.h src/lbm_comm.h src/lbm_save.h
 objs/exercise_0.o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
-objs/exercise_1$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
-objs/exercise_2$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
-objs/exercise_3$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
-objs/exercise_4$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
-objs/exercise_5$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
 objs/exercise_6$(MODE).o: src/lbm_struct.h src/lbm_config.h src/exercises.h src/lbm_comm.h src/lbm_save.h src/lbm_phys.h
 oobjs/exercises.o: src/exercises.h src/lbm_comm.h src/lbm_struct.h src/lbm_config.h src/lbm_save.h src/lbm_phys.h
 objs/display.o: src/lbm_struct.h src/lbm_config.h

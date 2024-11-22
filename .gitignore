@@ -1,3 +1,5 @@
+.idea/
+.vscode/
 .git/
 objs/
 *.i
@@ -6,3 +8,5 @@ objs/
 *.ptx
 *.cubin
 *.fatbin
+*.gif
+*.raw
