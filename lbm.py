@@ -1,6 +1,7 @@
 import numpy as np
+import functools as ft
 
-nx, ny = 32, 32
+nx, ny = 8, 8
 iter = 2000
 
 mesh = np.ones((ny, nx))
@@ -33,4 +34,9 @@ f[:, [E, S, W, N]] = rho_0/9
 f[:,[NE, SE, SW, NW]] = rho_0/36
 # end initial values
 
-print(np.extract(mesh==0, mesh))
+FL = [d[0] for d in filter(lambda d: d[1]==0, np.ndenumerate(mesh))]    # Fluid cells
+WALL = [d[0] for d in filter(lambda d: d[1]==1, np.ndenumerate(mesh))]    # Wall cells
+DR = [d[0] for d in filter(lambda d: d[1]==2, np.ndenumerate(mesh))]    # Driving cells
+
+for i in range(iter):
+    pass
