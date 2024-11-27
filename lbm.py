@@ -23,10 +23,10 @@ C, E, S, W, N, NE, SE, SW, NW = range(9)
 
 f = np.zeros((ny*nx, 9))        # distribution function values for each cell
 feq = np.zeros((ny*nx, 9))      # equilibrium distribution function value
-rho = np.zeros((ny*nx, 1))      # macroscopic density
-ux = np.zeros((ny*nx, 1))       # macroscopic velocity in direction x
-uy = np.zeros((ny*nx, 1))       # macroscopic velocity in direction y
-usqr = np.zeros((ny*nx, 1))     # helper variable
+rho = np.zeros((ny*nx))      # macroscopic density
+ux = np.zeros((ny*nx))       # macroscopic velocity in direction x
+uy = np.zeros((ny*nx))       # macroscopic velocity in direction y
+usqr = np.zeros((ny*nx))     # helper variable
 
 # begin initial values
 f[:, C] = rho_0*4/9.
@@ -38,5 +38,10 @@ FL = [d[0] for d in filter(lambda d: d[1]==0, np.ndenumerate(mesh))]    # Fluid 
 WALL = [d[0] for d in filter(lambda d: d[1]==1, np.ndenumerate(mesh))]    # Wall cells
 DR = [d[0] for d in filter(lambda d: d[1]==2, np.ndenumerate(mesh))]    # Driving cells
 
+
 for i in range(iter):
+    # Begin collision step
+    for i in range(len(rho)):
+        rho[i] = sum(f[i])
+    break
     pass
