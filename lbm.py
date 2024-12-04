@@ -1,7 +1,7 @@
 import numpy as np
 import functools as ft
 
-nx, ny = 8, 8
+nx, ny = 32, 32
 iter = 2000
 
 mesh = np.ones((ny, nx))
@@ -34,14 +34,69 @@ f[:, [E, S, W, N]] = rho_0/9
 f[:,[NE, SE, SW, NW]] = rho_0/36
 # end initial values
 
-FL = [d[0] for d in filter(lambda d: d[1]==0, np.ndenumerate(mesh))]    # Fluid cells
-WALL = [d[0] for d in filter(lambda d: d[1]==1, np.ndenumerate(mesh))]    # Wall cells
-DR = [d[0] for d in filter(lambda d: d[1]==2, np.ndenumerate(mesh))]    # Driving cells
+FL = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==0, np.ndenumerate(mesh))]    # Fluid cells
+WALL = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==1, np.ndenumerate(mesh))]    # Wall cells
+DR = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==2, np.ndenumerate(mesh))]    # Driving cells
 
-
+print("Starting compute loop... ", end="")
 for i in range(iter):
-    # Begin collision step
-    for i in range(len(rho)):
-        rho[i] = sum(f[i])
-    break
-    pass
+	# print(f"iter {i}: ", end="")
+	# Begin collision step =====================================================
+
+	# begin distribution function value transformation to macroscopic values    
+	rho[:] = [sum(f_i) for f_i in f]                                                # macroscopic density
+	ux[:] = (f[:, E] - f[:, W] + f[:, NE] + f[:, SE] - f[:, SW] - f[:, NW]) / rho   # x velocity
+	ux[:] = (f[:, N] - f[:, S] + f[:, NE] + f[:, NW] - f[:, SE] - f[:, SW]) / rho   # y velocity
+	# end distribution function value transformation to macroscopic values   
+
+	ux[DR] = u_0    # set x velocity for driving cells
+	uy[DR] = 0		# set x velocity for driving cells
+	usqr[:] = ux * ux + uy * uy	# calculate helper variable value
+
+	# begin equilibrium distribution function value calculation
+	feq[:, C] = (4/9) * rho * (1 - 1.5 * usqr)
+	feq[:, E] = (1/9) * rho * (1 + 3 * ux + 4.5 * (ux * ux) - 1.5 * usqr)
+	feq[:, S] = (1/9) * rho * (1 - 3 * uy + 4.5 * (uy * uy) - 1.5 * usqr)
+	feq[:, W] = (1/9) * rho * (1 - 3 * ux + 4.5 * (ux * ux) - 1.5 * usqr)
+	feq[:, N] = (1/9) * rho * (1 + 3 * uy + 4.5 * (uy * uy) - 1.5 * usqr)
+	feq[:, NE] = (1/36) * rho * (1 + 3 * (ux + uy) + 4.5 * (ux + uy) ** 2 - 1.5 * usqr)
+	feq[:, SE] = (1/36) * rho * (1 + 3 * (ux - uy) + 4.5 * (ux - uy) ** 2 - 1.5 * usqr)
+	feq[:, SW] = (1/36) * rho * (1 + 3 * (-ux - uy) + 4.5 * (-ux - uy) ** 2 - 1.5 * usqr)
+	feq[:, NW] = (1/36) * rho * (1 + 3 * (-ux + uy) + 4.5 * (-ux + uy) ** 2 - 1.5 * usqr)
+	# end equilibrium distribution function value calculation
+
+
+	# begin wall cell f calculation (bounce back)
+	for d, s in zip([C, E, S, W, N, NE, SE, SW, NW], [C, W, N, E, S, SW, NW, NE, SE]):
+		f[WALL, d] = f[WALL, s]
+	# end wall cell f calculation (bounce back)
+
+	# begin driving cell f calculation
+	f[DR, :] = feq[DR, :]	# distribution function value = equilibrium value
+	# end driving cell f calculation
+
+	# begin fluid cell f calculation
+	f[FL, :] = f[FL, :] * (1 - 1 / tau) + feq[FL, :] / tau
+	# end fluid cell f calculation
+
+	# End collision step =====================================================
+
+	# Begin propagation step =====================================================
+
+	f = np.reshape(f, (ny, nx, 9))
+
+	# begin particle propagation
+	f[:, 1:, E] = f[:, :-1, E]
+	f[1:, :, S] = f[:-1, :, S]
+	f[:, 0:-1, W] = f[:, 1:, W]
+	f[:-1, :, N] = f[1:, :, N]
+	f[:-1, 1:, NE] = f[1:, :-1, NE]
+	f[1:, 1:, SE] = f[:-1, :-1, SE]
+	f[1:, :-1, SW] = f[:-1, 1:, SW]
+	f[:-1, :-1, NW] = f[1:, 1:, NW]
+	# end particle propagation
+
+	f = np.reshape(f, (ny * nx, 9))
+
+	# print("Done.")
+print("Done.")
