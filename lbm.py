@@ -1,7 +1,10 @@
 import numpy as np
 import functools as ft
+import os
 
-nx, ny = 32, 32
+clear = lambda: os.system('clear')
+
+nx, ny = 8, 8
 iter = 2000
 
 mesh = np.ones((ny, nx))
@@ -43,10 +46,16 @@ for i in range(iter):
 	# print(f"iter {i}: ", end="")
 	# Begin collision step =====================================================
 
-	# begin distribution function value transformation to macroscopic values    
+	assert not np.isnan(rho).any(), "NaN detected in rho!"
+	assert not np.isnan(ux).any(), "NaN detected in ux!"
+	assert not np.isnan(uy).any(), "NaN detected in uy!"
+	assert not np.isnan(f).any(), "NaN detected in f!"
+	assert np.all(usqr < 1e3), f"usqr too large: max(usqr) = {np.max(usqr)}"
+
+	# begin distribution function value transformation to macroscopic values
 	rho[:] = [sum(f_i) for f_i in f]                                                # macroscopic density
 	ux[:] = (f[:, E] - f[:, W] + f[:, NE] + f[:, SE] - f[:, SW] - f[:, NW]) / rho   # x velocity
-	ux[:] = (f[:, N] - f[:, S] + f[:, NE] + f[:, NW] - f[:, SE] - f[:, SW]) / rho   # y velocity
+	uy[:] = (f[:, N] - f[:, S] + f[:, NE] + f[:, NW] - f[:, SE] - f[:, SW]) / rho   # y velocity
 	# end distribution function value transformation to macroscopic values   
 
 	ux[DR] = u_0    # set x velocity for driving cells
@@ -88,7 +97,7 @@ for i in range(iter):
 	# begin particle propagation
 	f[:, 1:, E] = f[:, :-1, E]
 	f[1:, :, S] = f[:-1, :, S]
-	f[:, 0:-1, W] = f[:, 1:, W]
+	f[:, :-1, W] = f[:, 1:, W]
 	f[:-1, :, N] = f[1:, :, N]
 	f[:-1, 1:, NE] = f[1:, :-1, NE]
 	f[1:, 1:, SE] = f[:-1, :-1, SE]
@@ -97,6 +106,12 @@ for i in range(iter):
 	# end particle propagation
 
 	f = np.reshape(f, (ny * nx, 9))
+	u = np.sqrt(ux * ux + uy * uy)/u_0
+	u = np.reshape(u, (ny, nx))
+	clear()
+	print(f"Iteration {i+1}/{iter}")
+	print(u)
+
 
 	# print("Done.")
 print("Done.")
