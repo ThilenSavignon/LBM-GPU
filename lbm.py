@@ -4,8 +4,8 @@ import os
 
 clear = lambda: os.system('clear')
 
-nx, ny = 8, 8
-iter = 2000
+nx, ny = 32, 32
+iter = 3000
 
 mesh = np.ones((ny, nx))
 mesh[1:ny-1, 1:nx-1] = 0
@@ -41,7 +41,7 @@ FL = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==0, np.ndenumerate(m
 WALL = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==1, np.ndenumerate(mesh))]    # Wall cells
 DR = [d[0][0] * ny + d[0][1] for d in filter(lambda d: d[1]==2, np.ndenumerate(mesh))]    # Driving cells
 
-print("Starting compute loop... ", end="")
+print("Starting compute loop... ")
 for i in range(iter):
 	# print(f"iter {i}: ", end="")
 	# Begin collision step =====================================================
@@ -106,12 +106,35 @@ for i in range(iter):
 	# end particle propagation
 
 	f = np.reshape(f, (ny * nx, 9))
-	u = np.sqrt(ux * ux + uy * uy)/u_0
-	u = np.reshape(u, (ny, nx))
-	clear()
-	print(f"Iteration {i+1}/{iter}")
-	print(u)
+	# u = np.sqrt(ux * ux + uy * uy)/u_0
+	# u = np.reshape(u, (ny, nx))
+	# clear()
+	# print(f"Iteration {i+1}/{iter}")
+	# print(u)
 
 
 	# print("Done.")
+
+import matplotlib as mpl
+from matplotlib import pyplot
+
+u = np.sqrt(ux * ux + uy * uy)/u_0
+u = np.reshape(u, (ny, nx))
+
+# make values from -5 to 5, for this example
+
+# make a color map of fixed colors
+cmap = mpl.colors.LinearSegmentedColormap.from_list('color_map', ['blue','yellow','red'], 256)
+# bounds=[0, 0.33,0.66,1]
+# norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+# tell imshow about color map so that only set colors are used
+img = pyplot.imshow(u, interpolation='nearest',
+                    cmap = cmap) #,norm=norm)
+
+# make a color bar
+pyplot.colorbar(img,cmap=cmap) #,
+                # norm=norm,boundaries=bounds,ticks=[i/10 for i in range(11)])
+
+pyplot.show()
 print("Done.")
