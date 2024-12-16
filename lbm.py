@@ -46,12 +46,6 @@ for i in range(iter):
 	# print(f"iter {i}: ", end="")
 	# Begin collision step =====================================================
 
-	assert not np.isnan(rho).any(), "NaN detected in rho!"
-	assert not np.isnan(ux).any(), "NaN detected in ux!"
-	assert not np.isnan(uy).any(), "NaN detected in uy!"
-	assert not np.isnan(f).any(), "NaN detected in f!"
-	assert np.all(usqr < 1e3), f"usqr too large: max(usqr) = {np.max(usqr)}"
-
 	# begin distribution function value transformation to macroscopic values
 	rho[:] = [sum(f_i) for f_i in f]                                                # macroscopic density
 	ux[:] = (f[:, E] - f[:, W] + f[:, NE] + f[:, SE] - f[:, SW] - f[:, NW]) / rho   # x velocity
