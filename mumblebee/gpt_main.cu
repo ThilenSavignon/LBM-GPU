@@ -48,6 +48,21 @@ __global__ void initialize(float* f, float* feq, int nx, int ny) {
     }
 }
 
+__global__ void find_values(int *FL,int *WALL,int *DR, int **mesh, int nx, int ny, int *counterFL,int *counterWALL,int *counterDR){
+	int x = INDEX / ny;
+	int y = INDEX % nx;
+	if(mesh[x][y]==0){
+		int pos = atomicAdd(counterFL, 1); // Atomic increment to get unique position
+		FL[pos] = x * ny + y; // Store the flattened index
+	}else if(mesh[x][y]==1){
+		int pos = atomicAdd(counterWALL, 1); // Atomic increment to get unique position
+		WALL[pos] = x * ny + y; // Store the flattened index
+	}else if (mesh[x][y]==2){
+		int pos = atomicAdd(counterDR, 1); // Atomic increment to get unique position
+		DR[pos] = x * ny + y; // Store the flattened index
+	}
+}
+
 // Kernel for collision step
 __global__ void collision(float* f, float* feq, float* rho, float* ux, float* uy, int* fluid_cells, int num_fluid) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;

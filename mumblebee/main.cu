@@ -13,6 +13,10 @@
 #define NW	8
 
 #define INDEX (gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y) + blockIdx.x * blockDim.x + threadIdx.x)
+#define INDEX_X (blockIdx.x * blockDim.x + threadIdx.x)
+#define INDEX_Y	(blockDim.y * blockIdx.y + threadIdx.y)
+#define OFFSET_Y (gridDim.x * blockDim.x)
+#define INDEX_FROM(x, y) ((OFFSET_Y) * (y) + (x))
 
 template <typename T>
 void printMatrix(T** matrix, int rows, int cols) {
@@ -28,7 +32,7 @@ int main (int argc, char** argv){
 
     // initialisation des parametres de la simulation
     int nx, ny, iter, Re;
-    nx = 32;
+    nx = 32; 
     ny = 32;
     iter = 3000;
 	Re=1000;
@@ -37,7 +41,14 @@ int main (int argc, char** argv){
     double  rho_0, u_0, viscosity, tau;
     rho_0 = 1;
     u_0 = 0.1;
+	viscosity = (ny-1)*u_0/Re;
     tau = (6*viscosity+1)/2;
+
+	std::cout << "rho_0 = " << rho_0 << std::endl;
+	std::cout << "u_0 = " << u_0 << std::endl;
+	std::cout << "viscosity = " << viscosity << std::endl;
+	std::cout << "tau_0 = " << tau << std::endl;
+	
 
     // initialisation de la grille de la simulation
     int** mesh;
@@ -67,21 +78,25 @@ int main (int argc, char** argv){
             feq[i][j] = 0.0; // equilibrium distribution function value
         }
     }
-}
-
-__global__ void find_values(int *FL,int *WALL,int *DR, int **mesh, int nx, int ny, int *counter){
-	int x = INDEX / ny;
-	int y = INDEX % nx;
-	if(mesh[x][y]==0){
-		int pos = atomicAdd(counter, 1); // Atomic increment to get unique position
-		FL[pos] = x * ny + y; // Store the flattened index
-	}else if(mesh[x][y]==1){
-		int pos = atomicAdd(counter, 1); // Atomic increment to get unique position
-		WALL[pos] = x * ny + y; // Store the flattened index
-	}else if (mesh[x][y]==2){
-		int pos = atomicAdd(counter, 1); // Atomic increment to get unique position
-		DR[pos] = x * ny + y; // Store the flattened index
+int size = nx*ny;
+int FL[size],WALL[size],DR[size];
+int counterFL,counterWALL,counterDR =0;
+	for(int i = 0; i<nx; i++){
+        for(int j = 0; j<ny; j++){
+			if(mesh[i][j]==0){
+				counterFL++;
+				FL[counterFL] = i * ny + j; // Store the flattened index
+			}else if(mesh[i][j]==1){
+				counterWALL++;
+				WALL[counterWALL] = i * ny + j; // Store the flattened index
+			}else if (mesh[i][j]==2){
+				counterDR++;
+				DR[counterDR] = i * ny + j; // Store the flattened index
+			}
+		}
 	}
+
+	return 0;
 }
 
 
@@ -135,4 +150,16 @@ __global__ void collision_step (
 			f[INDEX][i] = f[INDEX][i] * (1. - 1. / tau) + feq[INDEX][i] / tau;
 		}
 	}
+}
+
+__global__ void propagation_step(double **f_src, double **f_dst, int nx, int ny) {
+	if(INDEX_X < nx-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y)][E] = f_src[INDEX][E];
+	if(INDEX_X > 0)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y)][W] = f_src[INDEX][W];
+	if(INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X, INDEX_Y + 1)][S] = f_src[INDEX][S];
+	if(INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X, INDEX_Y - 1)][N] = f_src[INDEX][N];
+	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)][SE] = f_src[INDEX][SE];
+	if(INDEX_X < nx-1 && INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)][NE] = f_src[INDEX][NE];
+	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)][SW] = f_src[INDEX][SW];
+	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)][NW] = f_src[INDEX][NW];
+
 }
