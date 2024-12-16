@@ -78,20 +78,25 @@ int main (int argc, char** argv){
             feq[i][j] = 0.0; // equilibrium distribution function value
         }
     }
-int size = nx*ny;
-int FL[size],WALL[size],DR[size];
-int counterFL,counterWALL,counterDR =0;
+
+boolean FL[nx][ny],WALL[nx][ny],DR[nx][ny];
+
 	for(int i = 0; i<nx; i++){
         for(int j = 0; j<ny; j++){
 			if(mesh[i][j]==0){
-				counterFL++;
-				FL[counterFL] = i * ny + j; // Store the flattened index
+				
+				FL[i][j] = TRUE;
+				WALL[i][j] = FALSE; // Store the flattened index
+				DR[i][j] = FALSE; // Store the flattened index
+				
 			}else if(mesh[i][j]==1){
-				counterWALL++;
-				WALL[counterWALL] = i * ny + j; // Store the flattened index
+				FL[i][j] = FALSE;
+				WALL[i][j] = TRUE; // Store the flattened index
+				DR[i][j] = FALSE; // Store the flattened index
 			}else if (mesh[i][j]==2){
-				counterDR++;
-				DR[counterDR] = i * ny + j; // Store the flattened index
+				FL[i][j] = FALSE;
+				WALL[i][j] = FALSE; // Store the flattened index
+				DR[i][j] = TRUE; // Store the flattened index
 			}
 		}
 	}
