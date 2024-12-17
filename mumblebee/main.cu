@@ -79,24 +79,24 @@ int main (int argc, char** argv){
         }
     }
 
-boolean FL[nx][ny],WALL[nx][ny],DR[nx][ny];
+bool FL[nx][ny],WALL[nx][ny],DR[nx][ny];
 
 	for(int i = 0; i<nx; i++){
         for(int j = 0; j<ny; j++){
 			if(mesh[i][j]==0){
 				
-				FL[i][j] = TRUE;
-				WALL[i][j] = FALSE; // Store the flattened index
-				DR[i][j] = FALSE; // Store the flattened index
+				FL[i][j] = true;
+				WALL[i][j] = false; // Store the flattened index
+				DR[i][j] = false; // Store the flattened index
 				
 			}else if(mesh[i][j]==1){
-				FL[i][j] = FALSE;
-				WALL[i][j] = TRUE; // Store the flattened index
-				DR[i][j] = FALSE; // Store the flattened index
+				FL[i][j] = false;
+				WALL[i][j] = true; // Store the flattened index
+				DR[i][j] = false; // Store the flattened index
 			}else if (mesh[i][j]==2){
-				FL[i][j] = FALSE;
-				WALL[i][j] = FALSE; // Store the flattened index
-				DR[i][j] = TRUE; // Store the flattened index
+				FL[i][j] = false;
+				WALL[i][j] = false; // Store the flattened index
+				DR[i][j] = true; // Store the flattened index
 			}
 		}
 	}
