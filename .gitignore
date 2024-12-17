@@ -10,3 +10,4 @@ objs/
 *.fatbin
 *.gif
 *.raw
+*.o
