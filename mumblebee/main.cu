@@ -21,21 +21,33 @@
 template <typename T>
 void printMatrix(T** matrix, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {         // Parcourt les lignes
+		if (cols == 0) {
+			std::cout << matrix[i];
+			continue;
+		}
         for (int j = 0; j < cols; ++j) {    // Parcourt les colonnes
             std::cout << matrix[i][j] << " "; // Affiche chaque élément
         }
         std::cout << std::endl;             // Saut de ligne après chaque ligne
     }
+	if (cols == 0)
+		std::cout << std::endl;                 // Saut de ligne supplémentaire à la fin
+	std::cout << std::endl;
 }
 
 int main (int argc, char** argv){
 
     // initialisation des parametres de la simulation
     int nx, ny, iter, Re;
-    nx = 32; 
-    ny = 32;
+    nx = 8; 
+    ny = 8;
     iter = 3000;
 	Re=1000;
+
+	std::cout << "nx = " << nx << std::endl;
+	std::cout << "ny = " << ny << std::endl;
+	std::cout << "iter = " << iter << std::endl;
+	std::cout << "Re = " << Re << std::endl;
 
     // initialisation des variables
     double  rho_0, u_0, viscosity, tau;
@@ -48,10 +60,15 @@ int main (int argc, char** argv){
 	std::cout << "u_0 = " << u_0 << std::endl;
 	std::cout << "viscosity = " << viscosity << std::endl;
 	std::cout << "tau_0 = " << tau << std::endl;
+	std::cout << std::endl;
 	
 
     // initialisation de la grille de la simulation
     int** mesh;
+	mesh = new int*[nx];
+	for(int i = 0; i<nx; i++){
+		mesh[i] = new int[ny];
+	}
     for(int i = 0; i<nx; i++){
         for(int j = 0; j<ny; j++){
             if(i == 0)
@@ -60,14 +77,22 @@ int main (int argc, char** argv){
                 mesh[i][j]=1; // les extremes sont des murs
             else
                 mesh[i][j] = 0; // le reste est vide
-            // std::cout << mesh[i][j];
         }
-        // std::cout << std::endl;
     }
     std::cout << "Affichage de  : mesh" << std::endl;
     printMatrix(mesh, nx, ny);
     
     double **f, **feq, **rho, **ux, **uy, **usqr;
+	f = new double*[nx*ny];
+	feq = new double*[nx*ny];
+	rho = new double*[nx*ny];
+	ux = new double*[nx*ny];
+	uy = new double*[nx*ny];
+	usqr = new double*[nx*ny];
+	for(int i = 0; i<nx*ny; i++){
+		f[i] = new double[9];
+		feq[i] = new double[9];
+	}
     for(int i = 0; i<nx*ny; i++){
         rho[i]=0; // macroscopic density
         ux[i]=0; // macroscopic velocity in direction x
@@ -79,7 +104,36 @@ int main (int argc, char** argv){
         }
     }
 
-bool FL[nx][ny],WALL[nx][ny],DR[nx][ny];
+	std::cout << "Affichage de  : f" << std::endl;
+	printMatrix(f, nx*ny, 9);
+
+	std::cout << "Affichage de  : feq" << std::endl;
+	printMatrix(feq, nx*ny, 9);
+
+	std::cout << "Affichage de  : rho" << std::endl;
+	printMatrix(rho, nx*ny, 0);
+
+	std::cout << "Affichage de  : ux" << std::endl;
+	printMatrix(ux, nx*ny, 0);
+
+	std::cout << "Affichage de  : uy" << std::endl;
+	printMatrix(uy, nx*ny, 0);
+
+	std::cout << "Affichage de  : usqr" << std::endl;
+	printMatrix(usqr, nx*ny, 0);
+
+
+    std::cout << "Init DR, WALL et FL" << std::endl;
+
+	bool **DR, **WALL, **FL;
+	DR = new bool*[nx];
+	WALL = new bool*[nx];
+	FL = new bool*[nx];
+	for(int i = 0; i<nx; i++){
+		DR[i] = new bool[ny];
+		WALL[i] = new bool[ny];
+		FL[i] = new bool[ny];
+	}
 
 	for(int i = 0; i<nx; i++){
         for(int j = 0; j<ny; j++){
@@ -100,6 +154,26 @@ bool FL[nx][ny],WALL[nx][ny],DR[nx][ny];
 			}
 		}
 	}
+    std::cout << "Affichage de  : FL" << std::endl;
+	printMatrix(FL, nx, ny);
+
+	std::cout << "Affichage de  : WALL" << std::endl;
+	printMatrix(WALL, nx, ny);
+	
+	std::cout << "Affichage de  : DR" << std::endl;
+	printMatrix(DR, nx, ny);
+
+
+	delete[] mesh;
+	delete[] f;
+	delete[] feq;
+	delete[] rho;
+	delete[] ux;
+	delete[] uy;
+	delete[] usqr;
+	delete[] DR;
+	delete[] WALL;
+	delete[] FL;
 
 	return 0;
 }
