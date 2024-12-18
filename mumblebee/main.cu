@@ -151,8 +151,8 @@ int main (int argc, char** argv){
 	args::ArgumentParser parser("main", "This is a main program for the LBM simulation");
 
 	// Set parser value
-	args::Flag print(parser, "print", "print the matrix at the end", {"p"});
 	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+	args::Flag print(parser, "print", "print the matrix at the end", {"p"});
 	args::ValueFlag<int> width(parser, "width", "Width of matrix ", {"w"}, 32);
 	args::ValueFlag<int> height(parser, "height", "Height of matrix ", {"h"},32);
 	args::ValueFlag<int> iterations(parser, "iteration", "Number of iterations", {"i"}, 3000);
