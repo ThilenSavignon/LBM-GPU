@@ -148,7 +148,7 @@ __global__ void propagation_step(double **f_src, double **f_dst, int nx, int ny)
 int main (int argc, char** argv){
 
 	// Define parser
-	args::ArgumentParser parser("gemm_cuda", "Matrix Multiply using CUDA");
+	args::ArgumentParser parser("main", "This is a main program for the LBM simulation");
 
 	// Set parser value
 	args::Flag print(parser, "print", "print the matrix at the end", {"p"});
