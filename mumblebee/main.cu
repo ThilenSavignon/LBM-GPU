@@ -1,4 +1,7 @@
-#include <iostream>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <iostream> // Pour debug ou affichage
+#include "args.hxx" // Pour parser les arguments
 
 
 // initialisation des directions
@@ -35,74 +38,20 @@ void printMatrix(T** matrix, int rows, int cols) {
 	std::cout << std::endl;
 }
 
-int main (int argc, char** argv){
-
-    // initialisation des parametres de la simulation
-    int nx, ny, iter, Re;
-    nx = 8; 
-    ny = 8;
-    iter = 3000;
-	Re=1000;
-
+// fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
+void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, double **f, double **feq, double **rho, double **ux, double **uy, double **usqr, bool **DR, bool **WL, bool **FL) {
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
 	std::cout << "iter = " << iter << std::endl;
 	std::cout << "Re = " << Re << std::endl;
-
-    // initialisation des variables
-    double  rho_0, u_0, viscosity, tau;
-    rho_0 = 1;
-    u_0 = 0.1;
-	viscosity = (ny-1)*u_0/Re;
-    tau = (6*viscosity+1)/2;
-
 	std::cout << "rho_0 = " << rho_0 << std::endl;
 	std::cout << "u_0 = " << u_0 << std::endl;
 	std::cout << "viscosity = " << viscosity << std::endl;
 	std::cout << "tau_0 = " << tau << std::endl;
 	std::cout << std::endl;
-	
 
-    // initialisation de la grille de la simulation
-    int** mesh;
-	mesh = new int*[nx];
-	for(int i = 0; i<nx; i++){
-		mesh[i] = new int[ny];
-	}
-    for(int i = 0; i<nx; i++){
-        for(int j = 0; j<ny; j++){
-            if(i == 0)
-                mesh[i][j]=2; // premiere ligne est un driving fluid
-            else if (j == 0 || j == ny-1 || i == nx-1)
-                mesh[i][j]=1; // les extremes sont des murs
-            else
-                mesh[i][j] = 0; // le reste est vide
-        }
-    }
-    std::cout << "Affichage de  : mesh" << std::endl;
-    printMatrix(mesh, nx, ny);
-    
-    double **f, **feq, **rho, **ux, **uy, **usqr;
-	f = new double*[nx*ny];
-	feq = new double*[nx*ny];
-	rho = new double*[nx*ny];
-	ux = new double*[nx*ny];
-	uy = new double*[nx*ny];
-	usqr = new double*[nx*ny];
-	for(int i = 0; i<nx*ny; i++){
-		f[i] = new double[9];
-		feq[i] = new double[9];
-	}
-    for(int i = 0; i<nx*ny; i++){
-        rho[i]=0; // macroscopic density
-        ux[i]=0; // macroscopic velocity in direction x
-        uy[i]=0; // macroscopic velocity in direction y
-        usqr[i]=0; // helper variable
-        for (int j = 0; j<9; j++){
-            f[i][j] = 0.0; // distribution function values for each cell
-            feq[i][j] = 0.0; // equilibrium distribution function value
-        }
-    }
+	std::cout << "Affichage de  : mesh" << std::endl;
+	printMatrix(mesh, nx, ny);
 
 	std::cout << "Affichage de  : f" << std::endl;
 	printMatrix(f, nx*ny, 9);
@@ -122,62 +71,15 @@ int main (int argc, char** argv){
 	std::cout << "Affichage de  : usqr" << std::endl;
 	printMatrix(usqr, nx*ny, 0);
 
-
-    std::cout << "Init DR, WALL et FL" << std::endl;
-
-	bool **DR, **WALL, **FL;
-	DR = new bool*[nx];
-	WALL = new bool*[nx];
-	FL = new bool*[nx];
-	for(int i = 0; i<nx; i++){
-		DR[i] = new bool[ny];
-		WALL[i] = new bool[ny];
-		FL[i] = new bool[ny];
-	}
-
-	for(int i = 0; i<nx; i++){
-        for(int j = 0; j<ny; j++){
-			if(mesh[i][j]==0){
-				
-				FL[i][j] = true;
-				WALL[i][j] = false; // Store the flattened index
-				DR[i][j] = false; // Store the flattened index
-				
-			}else if(mesh[i][j]==1){
-				FL[i][j] = false;
-				WALL[i][j] = true; // Store the flattened index
-				DR[i][j] = false; // Store the flattened index
-			}else if (mesh[i][j]==2){
-				FL[i][j] = false;
-				WALL[i][j] = false; // Store the flattened index
-				DR[i][j] = true; // Store the flattened index
-			}
-		}
-	}
-    std::cout << "Affichage de  : FL" << std::endl;
-	printMatrix(FL, nx, ny);
-
-	std::cout << "Affichage de  : WALL" << std::endl;
-	printMatrix(WALL, nx, ny);
-	
 	std::cout << "Affichage de  : DR" << std::endl;
 	printMatrix(DR, nx, ny);
 
+	std::cout << "Affichage de  : WALL" << std::endl;
+	printMatrix(WL, nx, ny);
 
-	delete[] mesh;
-	delete[] f;
-	delete[] feq;
-	delete[] rho;
-	delete[] ux;
-	delete[] uy;
-	delete[] usqr;
-	delete[] DR;
-	delete[] WALL;
-	delete[] FL;
-
-	return 0;
+	std::cout << "Affichage de  : FL" << std::endl;
+	printMatrix(FL, nx, ny);
 }
-
 
 __global__ void collision_step (
 	double **f,
@@ -241,4 +143,156 @@ __global__ void propagation_step(double **f_src, double **f_dst, int nx, int ny)
 	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)][SW] = f_src[INDEX][SW];
 	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)][NW] = f_src[INDEX][NW];
 
+}
+
+int main (int argc, char** argv){
+
+	// Define parser
+	args::ArgumentParser parser("gemm_cuda", "Matrix Multiply using CUDA");
+
+	// Set parser value
+	args::Flag print(parser, "print", "print the matrix at the end", {"p"});
+	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+	args::ValueFlag<int> width(parser, "width", "Width of matrix ", {"w"}, 32);
+	args::ValueFlag<int> height(parser, "height", "Height of matrix ", {"h"},32);
+	args::ValueFlag<int> iterations(parser, "iteration", "Number of iterations", {"i"}, 3000);
+	// args::Flag is_shared(parser, "shared", "Use shared memory", {"s"});
+
+	// Invoke parser
+	try {
+		parser.ParseCLI(argc, argv);
+	} catch (args::Help) {
+		std::cout << parser;
+		return 0;
+	} catch (args::ParseError e) {
+		std::cerr << e.what() << std::endl;
+		std::cerr << parser;
+		return 1;
+	} catch (args::ValidationError e) {
+		std::cerr << e.what() << std::endl;
+		std::cerr << parser;
+		return 1;
+	}
+
+    // initialisation des parametres de la simulation
+    int nx, ny, iter, Re;
+    if (width && height) { //initialisation de la taille de la grille
+		nx = args::get(width);
+		ny = args::get(height);
+	} else {
+		nx = 32;
+		ny = 32;
+	}
+	if (iterations) //initialisation du nombre d'iterations
+		iter = args::get(iterations);
+	else
+		iter = 3000;
+	Re=1000; // nombre de Reynolds
+
+    // initialisation des variables
+    double  rho_0, u_0, viscosity, tau;
+    rho_0 = 1; // densite initiale
+    u_0 = 0.1; // vitesse initiale
+	viscosity = (ny-1)*u_0/Re; // viscosite
+    tau = (6*viscosity+1)/2; // relaxation time
+	
+
+    // initialisation de la grille de la simulation
+    int** mesh; // 0 = fluid, 1 = wall, 2 = driving fluid
+	mesh = new int*[nx];
+	for(int i = 0; i<nx; i++){
+		mesh[i] = new int[ny];
+	}
+    for(int i = 0; i<nx; i++){
+        for(int j = 0; j<ny; j++){
+            if(i == 0)
+                mesh[i][j]=2; // premiere ligne est un driving fluid
+            else if (j == 0 || j == ny-1 || i == nx-1)
+                mesh[i][j]=1; // les extremes sont des murs
+            else
+                mesh[i][j] = 0; // le reste est vide
+        }
+    }
+    
+    double **f, **feq, **rho, **ux, **uy, **usqr;
+	f = new double*[nx*ny]; // distribution function
+	feq = new double*[nx*ny]; // equilibrium distribution function
+	rho = new double*[nx*ny]; // macroscopic density
+	ux = new double*[nx*ny]; // macroscopic velocity in direction x
+	uy = new double*[nx*ny]; // macroscopic velocity in direction y
+	usqr = new double*[nx*ny]; // helper variable
+	for(int i = 0; i<nx*ny; i++){
+		f[i] = new double[9];
+		feq[i] = new double[9];
+	}
+    for(int i = 0; i<nx*ny; i++){
+        rho[i]=0; 
+        ux[i]=0; 
+        uy[i]=0; 
+        usqr[i]=0;
+        for (int j = 0; j<9; j++){
+            f[i][j] = 0.0; // distribution function values for each cell
+            feq[i][j] = 0.0; // equilibrium distribution function value
+        }
+    }
+
+	bool **DR, **WALL, **FL;
+	DR = new bool*[nx]; // driving fluid
+	WALL = new bool*[nx]; // wall
+	FL = new bool*[nx]; // fluid
+	for(int i = 0; i<nx; i++){
+		DR[i] = new bool[ny];
+		WALL[i] = new bool[ny];
+		FL[i] = new bool[ny];
+	}
+
+	for(int i = 0; i<nx; i++){
+        for(int j = 0; j<ny; j++){
+			if(mesh[i][j]==0){
+				
+				FL[i][j] = true;
+				WALL[i][j] = false; // Store the flattened index
+				DR[i][j] = false; // Store the flattened index
+				
+			}else if(mesh[i][j]==1){
+				FL[i][j] = false;
+				WALL[i][j] = true; // Store the flattened index
+				DR[i][j] = false; // Store the flattened index
+			}else if (mesh[i][j]==2){
+				FL[i][j] = false;
+				WALL[i][j] = false; // Store the flattened index
+				DR[i][j] = true; // Store the flattened index
+			}
+		}
+	}
+
+	if (print) {
+		printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
+	}
+
+	// free memory
+	for(int i = 0; i<nx; i++){
+		delete[] mesh[i];
+		delete[] DR[i];
+		delete[] WALL[i];
+		delete[] FL[i];
+	}
+
+	for(int i = 0; i<nx*ny; i++){
+		delete[] f[i];
+		delete[] feq[i];
+	}
+
+	delete[] mesh;
+	delete[] f;
+	delete[] feq;
+	delete[] rho;
+	delete[] ux;
+	delete[] uy;
+	delete[] usqr;
+	delete[] DR;
+	delete[] WALL;
+	delete[] FL;
+
+	return 0;
 }
