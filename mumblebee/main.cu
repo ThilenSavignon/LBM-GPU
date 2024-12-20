@@ -379,9 +379,9 @@ int main (int argc, char** argv){
 	cudaMemcpy(ux, d_ux, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy(uy, d_uy, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy(usqr, d_usqr, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(DR, d_DR, nx*sizeof(bool), cudaMemcpyDeviceToHost);
-	cudaMemcpy(WALL, d_WALL, nx*sizeof(bool), cudaMemcpyDeviceToHost);
-	cudaMemcpy(FL, d_FL, nx*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(DR, d_DR, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	
 	printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 
