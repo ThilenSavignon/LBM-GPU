@@ -21,6 +21,21 @@
 #define OFFSET_Y (gridDim.x * blockDim.x)
 #define INDEX_FROM(x, y) ((OFFSET_Y) * (y) + (x))
 
+typedef union Directions {
+	double direction[9];
+	struct {
+		double c;
+		double e;
+		double s;
+		double w;
+		double n;
+		double ne;
+		double se;
+		double sw;
+		double nw;
+	};
+} directions_t;
+
 template <typename T>
 void printMatrix(T** matrix, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {         // Parcourt les lignes
@@ -38,8 +53,33 @@ void printMatrix(T** matrix, int rows, int cols) {
 	std::cout << std::endl;
 }
 
+template <typename T>
+void printTable(T* table, int size) {
+	// if (typeid(T) == typeid(directions_t)) {
+	// 	for (int i = 0; i < size; ++i) {
+	// 		std::cout << table[i].nw << " ";
+	// 		std::cout << table[i].n << " ";
+	// 		std::cout << table[i].ne << " ";
+	// 		std::cout << std::endl;
+	// 		std::cout << table[i].w << " ";
+	// 		std::cout << table[i].c << " ";
+	// 		std::cout << table[i].e << " ";
+	// 		std::cout << std::endl;
+	// 		std::cout << table[i].sw << " ";
+	// 		std::cout << table[i].s << " ";
+	// 		std::cout << table[i].se << " ";
+	// 		std::cout << std::endl;
+	// 	}
+	// } else {
+		for (int i = 0; i < size; ++i) {
+			std::cout << table[i] << " ";
+		}
+		std::cout << std::endl;
+	// }
+}
+
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
-void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, double **f, double **feq, double **rho, double **ux, double **uy, double **usqr, bool **DR, bool **WL, bool **FL) {
+void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool **DR, bool **WL, bool **FL) {
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
 	std::cout << "iter = " << iter << std::endl;
@@ -53,23 +93,23 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	std::cout << "Affichage de  : mesh" << std::endl;
 	printMatrix(mesh, nx, ny);
 
-	std::cout << "Affichage de  : f" << std::endl;
-	printMatrix(f, nx*ny, 9);
+	// std::cout << "Affichage de  : f" << std::endl;
+	// printTable(f, nx*ny);
 
-	std::cout << "Affichage de  : feq" << std::endl;
-	printMatrix(feq, nx*ny, 9);
+	// std::cout << "Affichage de  : feq" << std::endl;
+	// printTable(feq, nx*ny);
 
 	std::cout << "Affichage de  : rho" << std::endl;
-	printMatrix(rho, nx*ny, 0);
+	printTable(rho, nx*ny);
 
 	std::cout << "Affichage de  : ux" << std::endl;
-	printMatrix(ux, nx*ny, 0);
+	printTable(ux, nx*ny);
 
 	std::cout << "Affichage de  : uy" << std::endl;
-	printMatrix(uy, nx*ny, 0);
+	printTable(uy, nx*ny);
 
 	std::cout << "Affichage de  : usqr" << std::endl;
-	printMatrix(usqr, nx*ny, 0);
+	printTable(usqr, nx*ny);
 
 	std::cout << "Affichage de  : DR" << std::endl;
 	printMatrix(DR, nx, ny);
@@ -82,8 +122,8 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 }
 
 __global__ void collision_step (
-	double **f,
-	double **feq,
+	directions_t *f,
+	directions_t *feq,
 	double *rho,
 	double *ux,
 	double *uy,
@@ -97,51 +137,51 @@ __global__ void collision_step (
 	// Macroscopic density
 	rho[INDEX] = 0;
 	for (int i=0; i<9; i++) {
-		rho[INDEX] += f[INDEX][i];
+		rho[INDEX] += f[INDEX].direction[i];
 	}
 
 	// Macroscopic velocities
-	ux[INDEX] = (DR[INDEX] ? u_0 : (f[INDEX][E] - f[INDEX][W] + f[INDEX][NE] + f[INDEX][SE] - f[INDEX][SW] - f[INDEX][NW]) / rho[INDEX]);
-	uy[INDEX] = (DR[INDEX] ? 0 : (f[INDEX][N] - f[INDEX][S] + f[INDEX][NE] + f[INDEX][NW] - f[INDEX][SE] - f[INDEX][SW]) / rho[INDEX]);
+	ux[INDEX] = (DR[INDEX] ? u_0 : (f[INDEX].e - f[INDEX].w + f[INDEX].ne + f[INDEX].se - f[INDEX].sw - f[INDEX].nw) / rho[INDEX]);
+	uy[INDEX] = (DR[INDEX] ? 0 : (f[INDEX].n - f[INDEX].s + f[INDEX].ne + f[INDEX].nw - f[INDEX].se - f[INDEX].sw) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
 
-	feq[INDEX][C] = (4/9) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
-	feq[INDEX][E] = (1/9) * rho[INDEX] * (1 + 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][S] = (1/9) * rho[INDEX] * (1 - 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][W] = (1/9) * rho[INDEX] * (1 - 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][N] = (1/9) * rho[INDEX] * (1 + 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][NE] = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][NE] = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][NE] = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX][NE] = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].c = (4/9) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
+	feq[INDEX].e = (1/9) * rho[INDEX] * (1 + 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].s = (1/9) * rho[INDEX] * (1 - 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].w = (1/9) * rho[INDEX] * (1 - 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].n = (1/9) * rho[INDEX] * (1 + 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].ne = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].se = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].sw = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].nw = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
 
 	if(WL[INDEX]) {
-		f[INDEX][E] = f[INDEX][W];
-		f[INDEX][S] = f[INDEX][N];
-		f[INDEX][W] = f[INDEX][E];
-		f[INDEX][N] = f[INDEX][S];
-		f[INDEX][NE] = f[INDEX][SW];
-		f[INDEX][SE] = f[INDEX][NW];
-		f[INDEX][SW] = f[INDEX][NE];
-		f[INDEX][NW] = f[INDEX][SE];
+		f[INDEX].e = f[INDEX].w;
+		f[INDEX].s = f[INDEX].n;
+		f[INDEX].w = f[INDEX].e;
+		f[INDEX].n = f[INDEX].s;
+		f[INDEX].ne = f[INDEX].sw;
+		f[INDEX].se = f[INDEX].nw;
+		f[INDEX].sw = f[INDEX].ne;
+		f[INDEX].nw = f[INDEX].se;
 	} else if (DR[INDEX]) {
 		f[INDEX] = feq[INDEX];
 	} else {
 		for (int i=0; i<9; i++) {
-			f[INDEX][i] = f[INDEX][i] * (1. - 1. / tau) + feq[INDEX][i] / tau;
+			f[INDEX].direction[i] = f[INDEX].direction[i] * (1. - 1. / tau) + feq[INDEX].direction[i] / tau;
 		}
 	}
 }
 
-__global__ void propagation_step(double **f_src, double **f_dst, int nx, int ny) {
-	if(INDEX_X < nx-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y)][E] = f_src[INDEX][E];
-	if(INDEX_X > 0)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y)][W] = f_src[INDEX][W];
-	if(INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X, INDEX_Y + 1)][S] = f_src[INDEX][S];
-	if(INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X, INDEX_Y - 1)][N] = f_src[INDEX][N];
-	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)][SE] = f_src[INDEX][SE];
-	if(INDEX_X < nx-1 && INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)][NE] = f_src[INDEX][NE];
-	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)][SW] = f_src[INDEX][SW];
-	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)][NW] = f_src[INDEX][NW];
+__global__ void propagation_step(directions_t *f_src, directions_t *f_dst, int nx, int ny) {
+	if(INDEX_X < nx-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y)].e = f_src[INDEX].e;
+	if(INDEX_X > 0)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y)].w = f_src[INDEX].w;
+	if(INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X, INDEX_Y + 1)].s = f_src[INDEX].s;
+	if(INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X, INDEX_Y - 1)].n = f_src[INDEX].n;
+	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)].se = f_src[INDEX].se;
+	if(INDEX_X < nx-1 && INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)].ne = f_src[INDEX].ne;
+	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
+	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
 
 }
 
@@ -214,26 +254,33 @@ int main (int argc, char** argv){
         }
     }
     
-    double **f, **feq, **rho, **ux, **uy, **usqr;
-	f = new double*[nx*ny]; // distribution function
-	feq = new double*[nx*ny]; // equilibrium distribution function
-	rho = new double*[nx*ny]; // macroscopic density
-	ux = new double*[nx*ny]; // macroscopic velocity in direction x
-	uy = new double*[nx*ny]; // macroscopic velocity in direction y
-	usqr = new double*[nx*ny]; // helper variable
+    directions_t *f, *feq;
+	double *rho, *ux, *uy, *usqr;
+	f = new directions_t[nx*ny]; // distribution function
+	feq = new directions_t[nx*ny]; // equilibrium distribution function
+	rho = new double[nx*ny]; // macroscopic density
+	ux = new double[nx*ny]; // macroscopic velocity in direction x
+	uy = new double[nx*ny]; // macroscopic velocity in direction y
+	usqr = new double[nx*ny]; // helper variable
 	for(int i = 0; i<nx*ny; i++){
-		f[i] = new double[9];
-		feq[i] = new double[9];
-	}
-    for(int i = 0; i<nx*ny; i++){
+		for(int j = 0; j<9; j++) {
+			feq[i].direction[j] = 0;
+		}
+
+		f[i].c = rho_0 * 4 / 9;
+		f[i].e = rho_0 / 9;
+		f[i].s = rho_0 / 9;
+		f[i].w = rho_0 / 9;
+		f[i].n = rho_0 / 9;
+		f[i].ne = rho_0 / 36;
+		f[i].se = rho_0 / 36;
+		f[i].sw = rho_0 / 36;
+		f[i].nw = rho_0 / 36;
+
         rho[i]=0; 
         ux[i]=0; 
         uy[i]=0; 
         usqr[i]=0;
-        for (int j = 0; j<9; j++){
-            f[i][j] = 0.0; // distribution function values for each cell
-            feq[i][j] = 0.0; // equilibrium distribution function value
-        }
     }
 
 	bool **DR, **WALL, **FL;
@@ -270,6 +317,69 @@ int main (int argc, char** argv){
 		printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	}
 
+	//================= CUDA =================
+	directions_t *d_f, *d_fswap, *d_ftmp, *d_feq;
+	double *d_rho, *d_ux, *d_uy, *d_usqr;
+	bool *d_DR, *d_WALL, *d_FL;
+
+	cudaMalloc(&d_f, nx*ny*sizeof(directions_t));
+	cudaMalloc(&d_fswap, nx*ny*sizeof(directions_t));
+	cudaMalloc(&d_feq, nx*ny*sizeof(directions_t));
+	cudaMalloc(&d_rho, nx*ny*sizeof(double));
+	cudaMalloc(&d_ux, nx*ny*sizeof(double));
+	cudaMalloc(&d_uy, nx*ny*sizeof(double));
+	cudaMalloc(&d_usqr, nx*ny*sizeof(double));
+	cudaMalloc(&d_DR, nx*sizeof(bool));
+	cudaMalloc(&d_WALL, nx*sizeof(bool));
+	cudaMalloc(&d_FL, nx*sizeof(bool));
+
+	cudaMemcpy(d_f, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_feq, feq, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_rho, rho, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_ux, ux, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_uy, uy, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_usqr, usqr, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_DR, DR, nx*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_WALL, WALL, nx*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_FL, FL, nx*sizeof(bool), cudaMemcpyHostToDevice);
+
+	//============ MAIN LOOP =============
+
+	dim3 dimBlock(32, 32);
+	dim3 dimGrid(1,1);
+
+	for(int i=0; i<iter; i++) {
+		collision_step<<<dimGrid, dimBlock>>>(
+			d_f,
+			d_feq,
+			d_rho,
+			d_ux,
+			d_uy,
+			d_usqr,
+			d_DR,
+			d_WALL,
+			d_FL,
+			u_0,
+			tau
+		);
+
+		propagation_step<<<dimGrid, dimBlock>>>(
+			d_f,
+			d_fswap,
+			nx,
+			ny
+		);
+
+		// Swapping propagation buffers
+		d_ftmp = d_fswap;
+		d_fswap = d_f;
+		d_f = d_ftmp;
+	}
+
+	
+
+	//=============== END ================
+
 	// free memory
 	for(int i = 0; i<nx; i++){
 		delete[] mesh[i];
@@ -278,10 +388,11 @@ int main (int argc, char** argv){
 		delete[] FL[i];
 	}
 
-	for(int i = 0; i<nx*ny; i++){
+
+	/* for(int i = 0; i<nx*ny; i++){
 		delete[] f[i];
 		delete[] feq[i];
-	}
+	} */
 
 	delete[] mesh;
 	delete[] f;
