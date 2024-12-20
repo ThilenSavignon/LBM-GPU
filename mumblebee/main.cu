@@ -81,7 +81,7 @@ void printdirection (directions_t *f, int nx, int ny){
 }
 
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
-void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool **DR, bool **WL, bool **FL) {
+void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool *DR, bool *WL, bool *FL) {
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
 	std::cout << "iter = " << iter << std::endl;
@@ -114,13 +114,13 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	printTable(usqr, nx*ny);
 
 	std::cout << "Affichage de  : DR" << std::endl;
-	printMatrix(DR, nx, ny);
+	printTable(DR, nx);
 
 	std::cout << "Affichage de  : WALL" << std::endl;
-	printMatrix(WL, nx, ny);
+	printTable(WL, nx);
 
 	std::cout << "Affichage de  : FL" << std::endl;
-	printMatrix(FL, nx, ny);
+	printTable(FL, nx);
 }
 
 __global__ void collision_step (
@@ -285,32 +285,27 @@ int main (int argc, char** argv){
         usqr[i]=0;
     }
 
-	bool **DR, **WALL, **FL;
-	DR = new bool*[nx]; // driving fluid
-	WALL = new bool*[nx]; // wall
-	FL = new bool*[nx]; // fluid
-	for(int i = 0; i<nx; i++){
-		DR[i] = new bool[ny];
-		WALL[i] = new bool[ny];
-		FL[i] = new bool[ny];
-	}
+	bool *DR, *WALL, *FL;
+	DR = new bool[nx*ny]; // driving fluid
+	WALL = new bool[nx*ny]; // wall
+	FL = new bool[nx*ny]; // fluid
 
 	for(int i = 0; i<nx; i++){
         for(int j = 0; j<ny; j++){
 			if(mesh[i][j]==0){
 				
-				FL[i][j] = true;
-				WALL[i][j] = false; // Store the flattened index
-				DR[i][j] = false; // Store the flattened index
+				FL[i*ny+j] = true;
+				WALL[i*ny+j] = false; // Store the flattened index
+				DR[i*ny+j] = false; // Store the flattened index
 				
 			}else if(mesh[i][j]==1){
-				FL[i][j] = false;
-				WALL[i][j] = true; // Store the flattened index
-				DR[i][j] = false; // Store the flattened index
+				FL[i*ny+j] = false;
+				WALL[i*ny+j] = true; // Store the flattened index
+				DR[i*ny+j] = false; // Store the flattened index
 			}else if (mesh[i][j]==2){
-				FL[i][j] = false;
-				WALL[i][j] = false; // Store the flattened index
-				DR[i][j] = true; // Store the flattened index
+				FL[i*ny+j] = false;
+				WALL[i*ny+j] = false; // Store the flattened index
+				DR[i*ny+j] = true; // Store the flattened index
 			}
 		}
 	}
@@ -395,9 +390,6 @@ int main (int argc, char** argv){
 	// free memory
 	for(int i = 0; i<nx; i++){
 		delete[] mesh[i];
-		delete[] DR[i];
-		delete[] WALL[i];
-		delete[] FL[i];
 	}
 
 
