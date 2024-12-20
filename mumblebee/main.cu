@@ -336,9 +336,9 @@ int main (int argc, char** argv){
 	cudaMemcpy(d_ux, ux, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_uy, uy, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_usqr, usqr, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_DR, DR, nx*sizeof(bool), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_WALL, WALL, nx*sizeof(bool), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_FL, FL, nx*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_DR, DR, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_WALL, WALL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_FL, FL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
 
 	//============ MAIN LOOP =============
 
