@@ -55,27 +55,29 @@ void printMatrix(T** matrix, int rows, int cols) {
 
 template <typename T>
 void printTable(T* table, int size) {
-	// if (typeid(T) == typeid(directions_t)) {
-	// 	for (int i = 0; i < size; ++i) {
-	// 		std::cout << table[i].nw << " ";
-	// 		std::cout << table[i].n << " ";
-	// 		std::cout << table[i].ne << " ";
-	// 		std::cout << std::endl;
-	// 		std::cout << table[i].w << " ";
-	// 		std::cout << table[i].c << " ";
-	// 		std::cout << table[i].e << " ";
-	// 		std::cout << std::endl;
-	// 		std::cout << table[i].sw << " ";
-	// 		std::cout << table[i].s << " ";
-	// 		std::cout << table[i].se << " ";
-	// 		std::cout << std::endl;
-	// 	}
-	// } else {
-		for (int i = 0; i < size; ++i) {
-			std::cout << table[i] << " ";
+	for (int i = 0; i < size; ++i) {
+		std::cout << table[i] << " ";
+	}
+	std::cout << std::endl;
+}
+
+void printdirection (directions_t *f, int nx, int ny){
+	for(int i = 0; i<nx; i++){
+		for(int j = 0; j<ny; j++){
+			std::cout << "[" << i << "][" << j << "]" << std::endl;
+			std::cout << f[i*ny+j].nw;
+			std::cout << f[i*ny+j].n;
+			std::cout << f[i*ny+j].ne << std::endl;
+			std::cout << f[i*ny+j].w;
+			std::cout << f[i*ny+j].c;
+			std::cout << f[i*ny+j].e << std::endl;
+			std::cout << f[i*ny+j].sw;
+			std::cout << f[i*ny+j].s;
+			std::cout << f[i*ny+j].se << std::endl;
+			std::cout << std::endl;
 		}
 		std::cout << std::endl;
-	// }
+	}
 }
 
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
@@ -93,11 +95,11 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	std::cout << "Affichage de  : mesh" << std::endl;
 	printMatrix(mesh, nx, ny);
 
-	// std::cout << "Affichage de  : f" << std::endl;
-	// printTable(f, nx*ny);
+	std::cout << "Affichage de  : f" << std::endl;
+	printdirection(f, nx, ny);
 
-	// std::cout << "Affichage de  : feq" << std::endl;
-	// printTable(feq, nx*ny);
+	std::cout << "Affichage de  : feq" << std::endl;
+	printdirection(feq, nx, ny);
 
 	std::cout << "Affichage de  : rho" << std::endl;
 	printTable(rho, nx*ny);
@@ -376,7 +378,17 @@ int main (int argc, char** argv){
 		d_f = d_ftmp;
 	}
 
+	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+	cudaMemcpy(feq, d_feq, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+	cudaMemcpy(rho, d_rho, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(ux, d_ux, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(uy, d_uy, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(usqr, d_usqr, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(DR, d_DR, nx*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(WALL, d_WALL, nx*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(FL, d_FL, nx*sizeof(bool), cudaMemcpyDeviceToHost);
 	
+	printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 
 	//=============== END ================
 
