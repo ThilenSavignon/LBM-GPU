@@ -114,13 +114,13 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	printTable(usqr, nx*ny);
 
 	std::cout << "Affichage de  : DR" << std::endl;
-	printTable(DR, nx);
+	printTable(DR, nx*ny);
 
 	std::cout << "Affichage de  : WALL" << std::endl;
-	printTable(WL, nx);
+	printTable(WL, nx*ny);
 
 	std::cout << "Affichage de  : FL" << std::endl;
-	printTable(FL, nx);
+	printTable(FL, nx*ny);
 }
 
 __global__ void collision_step (
