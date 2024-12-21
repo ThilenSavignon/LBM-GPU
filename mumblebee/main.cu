@@ -21,6 +21,9 @@
 #define OFFSET_Y (gridDim.x * blockDim.x)
 #define INDEX_FROM(x, y) ((OFFSET_Y) * (y) + (x))
 
+int nx = 32;
+int ny = 32;
+
 typedef union Directions {
 	double direction[9];
 	struct {
@@ -37,42 +40,39 @@ typedef union Directions {
 } directions_t;
 
 template <typename T>
-void printMatrix(T** matrix, int rows, int cols) {
-    for (int i = 0; i < rows; ++i) {         // Parcourt les lignes
-		if (cols == 0) {
-			std::cout << matrix[i];
-			continue;
+void print(T* table, int size) {
+	if (size == 0) {
+		return;
+	} else if (size == 1) {
+		std::cout << table << std::endl;
+	} else if (size == nx*ny) {
+		for (int i = 0; i < size; i++) {
+			std::cout << table[i] << " ";
+			if ((i+1) % nx == 0) {
+				std::cout << std::endl;
+			}
 		}
-        for (int j = 0; j < cols; ++j) {    // Parcourt les colonnes
-            std::cout << matrix[i][j] << " "; // Affiche chaque élément
-        }
-        std::cout << std::endl;             // Saut de ligne après chaque ligne
-    }
-	if (cols == 0)
-		std::cout << std::endl;                 // Saut de ligne supplémentaire à la fin
-	std::cout << std::endl;
-}
-
-template <typename T>
-void printTable(T* table, int size) {
-	for (int i = 0; i < size; ++i) {
-		std::cout << table[i] << " ";
+		std::cout << std::endl;
+	} else {
+		for (int i = 0; i < size; i++) {
+			std::cout << table[i] << " ";
+		}
+		std::cout << std::endl;
 	}
-	std::cout << std::endl;
 }
 
 void printdirection (directions_t *f, int nx, int ny){
 	for(int i = 0; i<nx; i++){
 		for(int j = 0; j<ny; j++){
 			std::cout << "[" << i << "][" << j << "]" << std::endl;
-			std::cout << f[i*ny+j].nw;
-			std::cout << f[i*ny+j].n;
+			std::cout << f[i*ny+j].nw << " ";
+			std::cout << f[i*ny+j].n << " ";
 			std::cout << f[i*ny+j].ne << std::endl;
-			std::cout << f[i*ny+j].w;
-			std::cout << f[i*ny+j].c;
+			std::cout << f[i*ny+j].w << " ";
+			std::cout << f[i*ny+j].c << " ";
 			std::cout << f[i*ny+j].e << std::endl;
-			std::cout << f[i*ny+j].sw;
-			std::cout << f[i*ny+j].s;
+			std::cout << f[i*ny+j].sw << " ";
+			std::cout << f[i*ny+j].s << " ";
 			std::cout << f[i*ny+j].se << std::endl;
 			std::cout << std::endl;
 		}
@@ -81,7 +81,7 @@ void printdirection (directions_t *f, int nx, int ny){
 }
 
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
-void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int** mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool *DR, bool *WL, bool *FL) {
+void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int* mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool *DR, bool *WL, bool *FL) {
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
 	std::cout << "iter = " << iter << std::endl;
@@ -93,7 +93,7 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	std::cout << std::endl;
 
 	std::cout << "Affichage de  : mesh" << std::endl;
-	printMatrix(mesh, nx, ny);
+	print(mesh, nx*ny);
 
 	std::cout << "Affichage de  : f" << std::endl;
 	printdirection(f, nx, ny);
@@ -102,25 +102,25 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	printdirection(feq, nx, ny);
 
 	std::cout << "Affichage de  : rho" << std::endl;
-	printTable(rho, nx*ny);
+	print(rho, nx*ny);
 
 	std::cout << "Affichage de  : ux" << std::endl;
-	printTable(ux, nx*ny);
+	print(ux, nx*ny);
 
 	std::cout << "Affichage de  : uy" << std::endl;
-	printTable(uy, nx*ny);
+	print(uy, nx*ny);
 
 	std::cout << "Affichage de  : usqr" << std::endl;
-	printTable(usqr, nx*ny);
+	print(usqr, nx*ny);
 
 	std::cout << "Affichage de  : DR" << std::endl;
-	printTable(DR, nx*ny);
+	print(DR, nx*ny);
 
 	std::cout << "Affichage de  : WALL" << std::endl;
-	printTable(WL, nx*ny);
+	print(WL, nx*ny);
 
 	std::cout << "Affichage de  : FL" << std::endl;
-	printTable(FL, nx*ny);
+	print(FL, nx*ny);
 }
 
 __global__ void collision_step (
@@ -217,13 +217,10 @@ int main (int argc, char** argv){
 	}
 
     // initialisation des parametres de la simulation
-    int nx, ny, iter, Re;
+    int iter, Re;
     if (width && height) { //initialisation de la taille de la grille
 		nx = args::get(width);
 		ny = args::get(height);
-	} else {
-		nx = 32;
-		ny = 32;
 	}
 	if (iterations) //initialisation du nombre d'iterations
 		iter = args::get(iterations);
@@ -240,20 +237,14 @@ int main (int argc, char** argv){
 	
 
     // initialisation de la grille de la simulation
-    int** mesh; // 0 = fluid, 1 = wall, 2 = driving fluid
-	mesh = new int*[nx];
-	for(int i = 0; i<nx; i++){
-		mesh[i] = new int[ny];
-	}
-    for(int i = 0; i<nx; i++){
-        for(int j = 0; j<ny; j++){
-            if(i == 0)
-                mesh[i][j]=2; // premiere ligne est un driving fluid
-            else if (j == 0 || j == ny-1 || i == nx-1)
-                mesh[i][j]=1; // les extremes sont des murs
-            else
-                mesh[i][j] = 0; // le reste est vide
-        }
+    int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
+    for(long i = 0; i<nx*ny; i++){
+		if(i < ny)
+			mesh[i]=2; // le fluide est injecté à gauche
+		else if (i % ny == 0 || i % ny == ny-1 || i > nx*ny-ny)
+			mesh[i] = 1; // les bords sont des murs
+		else
+			mesh[i] = 0; // le reste est du fluide
     }
     
     directions_t *f, *feq;
@@ -264,7 +255,7 @@ int main (int argc, char** argv){
 	ux = new double[nx*ny]; // macroscopic velocity in direction x
 	uy = new double[nx*ny]; // macroscopic velocity in direction y
 	usqr = new double[nx*ny]; // helper variable
-	for(int i = 0; i<nx*ny; i++){
+	for(long i = 0; i<nx*ny; i++){
 		for(int j = 0; j<9; j++) {
 			feq[i].direction[j] = 0;
 		}
@@ -290,23 +281,20 @@ int main (int argc, char** argv){
 	WALL = new bool[nx*ny]; // wall
 	FL = new bool[nx*ny]; // fluid
 
-	for(int i = 0; i<nx; i++){
-        for(int j = 0; j<ny; j++){
-			if(mesh[i][j]==0){
-				
-				FL[i*ny+j] = true;
-				WALL[i*ny+j] = false; // Store the flattened index
-				DR[i*ny+j] = false; // Store the flattened index
-				
-			}else if(mesh[i][j]==1){
-				FL[i*ny+j] = false;
-				WALL[i*ny+j] = true; // Store the flattened index
-				DR[i*ny+j] = false; // Store the flattened index
-			}else if (mesh[i][j]==2){
-				FL[i*ny+j] = false;
-				WALL[i*ny+j] = false; // Store the flattened index
-				DR[i*ny+j] = true; // Store the flattened index
-			}
+	for(long i = 0; i<nx*ny; i++){
+		if(mesh[i]==0){
+			FL[i] = true;
+			WALL[i] = false; // Store the flattened index
+			DR[i] = false; // Store the flattened index
+			
+		}else if(mesh[i]==1){
+			FL[i] = false;
+			WALL[i] = true; // Store the flattened index
+			DR[i] = false; // Store the flattened index
+		}else if (mesh[i]==2){
+			FL[i] = false;
+			WALL[i] = false; // Store the flattened index
+			DR[i] = true; // Store the flattened index
 		}
 	}
 
@@ -383,20 +371,8 @@ int main (int argc, char** argv){
 	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	
-	printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
-
+	printdirection(f, nx, ny);
 	//=============== END ================
-
-	// free memory
-	for(int i = 0; i<nx; i++){
-		delete[] mesh[i];
-	}
-
-
-	/* for(int i = 0; i<nx*ny; i++){
-		delete[] f[i];
-		delete[] feq[i];
-	} */
 
 	delete[] mesh;
 	delete[] f;
