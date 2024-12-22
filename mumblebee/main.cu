@@ -2,6 +2,7 @@
 #include <device_launch_parameters.h>
 #include <iostream> // Pour debug ou affichage
 #include "args.hxx" // Pour parser les arguments
+#include <assert.h> // Pour les assertions
 
 
 // initialisation des directions
@@ -319,6 +320,7 @@ int main (int argc, char** argv){
 	cudaMalloc(&d_FL, nx*sizeof(bool));
 
 	cudaMemcpy(d_f, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_fswap, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_feq, feq, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_rho, rho, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_ux, ux, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
