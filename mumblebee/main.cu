@@ -89,6 +89,7 @@ void printdirection (directions_t *f, int nx, int ny){
 
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
 void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int* mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool *DR, bool *WL, bool *FL) {
+	std::cout << "##########################################################################################################\n##########################################################################################################\n##########################################################################################################\n##########################################################################################################" << std::endl;
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
 	std::cout << "iter = " << iter << std::endl;
@@ -154,15 +155,15 @@ __global__ void collision_step (
 	uy[INDEX] = (DR[INDEX] ? 0 : (f[INDEX].n - f[INDEX].s + f[INDEX].ne + f[INDEX].nw - f[INDEX].se - f[INDEX].sw) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
 
-	feq[INDEX].c = (4/9) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
-	feq[INDEX].e = (1/9) * rho[INDEX] * (1 + 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].s = (1/9) * rho[INDEX] * (1 - 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].w = (1/9) * rho[INDEX] * (1 - 3 * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].n = (1/9) * rho[INDEX] * (1 + 3 * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].ne = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].se = (1/36) * rho[INDEX] * (1 + 3 * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].sw = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq[INDEX].nw = (1/36) * rho[INDEX] * (1 + 3 * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].c = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
+	feq[INDEX].e = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].s = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].w = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].n = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].ne = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].se = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].sw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq[INDEX].nw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
 
 	if(WL[INDEX]) {
 		f[INDEX].e = f[INDEX].w;
@@ -196,9 +197,13 @@ __global__ void propagation_step(directions_t *f_src, directions_t *f_dst, int n
 
 }
 
-__global__ void index_testing(directions_t *f) {
+__global__ void index_testing(directions_t *f, bool *WL) {
 	for(int i=0; i<9; i++) {
-		f[INDEX].direction[i] = INDEX;
+		if (WL[INDEX]) {
+			f[INDEX].direction[i] = INDEX;
+		} else {
+			f[INDEX].direction[i] = 0;
+		}
 	}
 }
 
@@ -240,7 +245,7 @@ int main (int argc, char** argv){
 	if (iterations) //initialisation du nombre d'iterations
 		iter = args::get(iterations);
 	else
-		iter = 5;
+		iter = 3000;
 	Re=1000; // nombre de Reynolds
 
     // initialisation des variables
@@ -275,15 +280,15 @@ int main (int argc, char** argv){
 			feq[i].direction[j] = 0;
 		}
 
-		f[i].c = rho_0 * 4 / 9;
-		f[i].e = rho_0 / 9;
-		f[i].s = rho_0 / 9;
-		f[i].w = rho_0 / 9;
-		f[i].n = rho_0 / 9;
-		f[i].ne = rho_0 / 36;
-		f[i].se = rho_0 / 36;
-		f[i].sw = rho_0 / 36;
-		f[i].nw = rho_0 / 36;
+		f[i].c = rho_0 * 4. / 9.;
+		f[i].e = rho_0 / 9.;
+		f[i].s = rho_0 / 9.;
+		f[i].w = rho_0 / 9.;
+		f[i].n = rho_0 / 9.;
+		f[i].ne = rho_0 / 36.;
+		f[i].se = rho_0 / 36.;
+		f[i].sw = rho_0 / 36.;
+		f[i].nw = rho_0 / 36.;
 
         rho[i]=0; 
         ux[i]=0; 
@@ -329,9 +334,9 @@ int main (int argc, char** argv){
 	cudaMalloc(&d_ux, nx*ny*sizeof(double));
 	cudaMalloc(&d_uy, nx*ny*sizeof(double));
 	cudaMalloc(&d_usqr, nx*ny*sizeof(double));
-	cudaMalloc(&d_DR, nx*sizeof(bool));
-	cudaMalloc(&d_WALL, nx*sizeof(bool));
-	cudaMalloc(&d_FL, nx*sizeof(bool));
+	cudaMalloc(&d_DR, nx*ny*sizeof(bool));
+	cudaMalloc(&d_WALL, nx*ny*sizeof(bool));
+	cudaMalloc(&d_FL, nx*ny*sizeof(bool));
 
 	cudaMemcpy(d_f, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_fswap, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
@@ -364,10 +369,11 @@ int main (int argc, char** argv){
 			tau
 		);
 
-		cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
-
+		// cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+		// printdirection(f, nx, ny);
 		// index_testing<<<dimGrid, dimBlock>>>(
-		// 	d_f
+		// 	d_f,
+		// 	d_WALL
 		// );
 
 		propagation_step<<<dimGrid, dimBlock>>>(
@@ -381,6 +387,9 @@ int main (int argc, char** argv){
 		d_ftmp = d_fswap;
 		d_fswap = d_f;
 		d_f = d_ftmp;
+
+		// d_ftmp = d_fswap;
+		// d_fswap = d_ftmp;
 	}
 
 	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
@@ -393,7 +402,8 @@ int main (int argc, char** argv){
 	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	
-	printdirection(f, nx, ny);
+	// printdirection(f, nx, ny);
+	printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	//=============== END ================
 
 	delete[] mesh;
