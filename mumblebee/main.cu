@@ -40,6 +40,12 @@ typedef union Directions {
 	};
 } directions_t;
 
+void copy (directions_t *d1, directions_t *d2){
+	for(int i = 0; i<9 ; i++){
+		d1->direction[i] = d2->direction[i];
+	}
+}
+
 template <typename T>
 void print(T* table, int size) {
 	if (size == 0) {
@@ -168,7 +174,9 @@ __global__ void collision_step (
 		f[INDEX].sw = f[INDEX].ne;
 		f[INDEX].nw = f[INDEX].se;
 	} else if (DR[INDEX]) {
-		f[INDEX] = feq[INDEX];
+		for (int i=0; i<9; i++) {
+			f[INDEX].direction[i] = feq[INDEX].direction[i];
+		}
 	} else {
 		for (int i=0; i<9; i++) {
 			f[INDEX].direction[i] = f[INDEX].direction[i] * (1. - 1. / tau) + feq[INDEX].direction[i] / tau;
@@ -186,6 +194,12 @@ __global__ void propagation_step(directions_t *f_src, directions_t *f_dst, int n
 	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
 	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
 
+}
+
+__global__ void index_testing(directions_t *f) {
+	for(int i=0; i<9; i++) {
+		f[INDEX].direction[i] = INDEX;
+	}
 }
 
 int main (int argc, char** argv){
@@ -226,7 +240,7 @@ int main (int argc, char** argv){
 	if (iterations) //initialisation du nombre d'iterations
 		iter = args::get(iterations);
 	else
-		iter = 3000;
+		iter = 5;
 	Re=1000; // nombre de Reynolds
 
     // initialisation des variables
@@ -304,7 +318,7 @@ int main (int argc, char** argv){
 	}
 
 	//================= CUDA =================
-	directions_t *d_f, *d_fswap, *d_ftmp, *d_feq;
+	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
 	double *d_rho, *d_ux, *d_uy, *d_usqr;
 	bool *d_DR, *d_WALL, *d_FL;
 
@@ -349,6 +363,12 @@ int main (int argc, char** argv){
 			u_0,
 			tau
 		);
+
+		cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+
+		// index_testing<<<dimGrid, dimBlock>>>(
+		// 	d_f
+		// );
 
 		propagation_step<<<dimGrid, dimBlock>>>(
 			d_f,

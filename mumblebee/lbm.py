@@ -5,7 +5,7 @@ import os
 clear = lambda: os.system('clear')
 
 nx, ny = 32, 32
-iter = 3000
+iter = 1
 
 mesh = np.ones((ny, nx))
 mesh[1:ny-1, 1:nx-1] = 0
@@ -109,26 +109,28 @@ for i in range(iter):
 
 	# print("Done.")
 
-import matplotlib as mpl
-from matplotlib import pyplot
+print(f)
 
-u = np.sqrt(ux * ux + uy * uy)/u_0
-u = np.reshape(u, (ny, nx))
+# import matplotlib as mpl
+# from matplotlib import pyplot
 
-# make values from -5 to 5, for this example
+# u = np.sqrt(ux * ux + uy * uy)/u_0
+# u = np.reshape(u, (ny, nx))
 
-# make a color map of fixed colors
-cmap = mpl.colors.LinearSegmentedColormap.from_list('color_map', ['blue','yellow','red'], 256)
-# bounds=[0, 0.33,0.66,1]
-# norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+# # make values from -5 to 5, for this example
 
-# tell imshow about color map so that only set colors are used
-img = pyplot.imshow(u, interpolation='nearest',
-                    cmap = cmap) #,norm=norm)
+# # make a color map of fixed colors
+# cmap = mpl.colors.LinearSegmentedColormap.from_list('color_map', ['blue','yellow','red'], 256)
+# # bounds=[0, 0.33,0.66,1]
+# # norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-# make a color bar
-pyplot.colorbar(img,cmap=cmap) #,
-                # norm=norm,boundaries=bounds,ticks=[i/10 for i in range(11)])
+# # tell imshow about color map so that only set colors are used
+# img = pyplot.imshow(u, interpolation='nearest',
+#                     cmap = cmap) #,norm=norm)
 
-pyplot.show()
-print("Done.")
+# # make a color bar
+# pyplot.colorbar(img,cmap=cmap) #,
+#                 # norm=norm,boundaries=bounds,ticks=[i/10 for i in range(11)])
+
+# pyplot.show()
+# print("Done.")
