@@ -22,8 +22,8 @@
 #define OFFSET_Y (gridDim.x * blockDim.x)
 #define INDEX_FROM(x, y) ((OFFSET_Y) * (y) + (x))
 
-int nx = 32;
-int ny = 32;
+int nx = 1024;
+int ny = 1024;
 
 typedef union Directions {
 	double direction[9];
@@ -47,7 +47,7 @@ void copy (directions_t *d1, directions_t *d2){
 }
 
 template <typename T>
-void print(T* table, int size) {
+void print_matrix(T* table, int size) {
 	if (size == 0) {
 		return;
 	} else if (size == 1) {
@@ -101,7 +101,7 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	std::cout << std::endl;
 
 	std::cout << "Affichage de  : mesh" << std::endl;
-	print(mesh, nx*ny);
+	print_matrix(mesh, nx*ny);
 
 	std::cout << "Affichage de  : f" << std::endl;
 	printdirection(f, nx, ny);
@@ -110,25 +110,25 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	printdirection(feq, nx, ny);
 
 	std::cout << "Affichage de  : rho" << std::endl;
-	print(rho, nx*ny);
+	print_matrix(rho, nx*ny);
 
 	std::cout << "Affichage de  : ux" << std::endl;
-	print(ux, nx*ny);
+	print_matrix(ux, nx*ny);
 
 	std::cout << "Affichage de  : uy" << std::endl;
-	print(uy, nx*ny);
+	print_matrix(uy, nx*ny);
 
 	std::cout << "Affichage de  : usqr" << std::endl;
-	print(usqr, nx*ny);
+	print_matrix(usqr, nx*ny);
 
 	std::cout << "Affichage de  : DR" << std::endl;
-	print(DR, nx*ny);
+	print_matrix(DR, nx*ny);
 
 	std::cout << "Affichage de  : WALL" << std::endl;
-	print(WL, nx*ny);
+	print_matrix(WL, nx*ny);
 
 	std::cout << "Affichage de  : FL" << std::endl;
-	print(FL, nx*ny);
+	print_matrix(FL, nx*ny);
 }
 
 __global__ void collision_step (
@@ -245,7 +245,7 @@ int main (int argc, char** argv){
 	if (iterations) //initialisation du nombre d'iterations
 		iter = args::get(iterations);
 	else
-		iter = 3000;
+		iter = 60000;
 	Re=1000; // nombre de Reynolds
 
     // initialisation des variables
@@ -352,7 +352,7 @@ int main (int argc, char** argv){
 	//============ MAIN LOOP =============
 
 	dim3 dimBlock(32, 32);
-	dim3 dimGrid(1,1);
+	dim3 dimGrid(32, 32);
 
 	for(int i=0; i<iter; i++) {
 		collision_step<<<dimGrid, dimBlock>>>(
@@ -401,9 +401,11 @@ int main (int argc, char** argv){
 	cudaMemcpy(DR, d_DR, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+
+	print_matrix(usqr, nx*ny);
 	
 	// printdirection(f, nx, ny);
-	printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
+	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	//=============== END ================
 
 	delete[] mesh;
