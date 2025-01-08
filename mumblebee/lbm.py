@@ -5,7 +5,7 @@ import os
 clear = lambda: os.system('clear')
 
 nx, ny = 32, 32
-iter = 1
+iter = 3000
 
 mesh = np.ones((ny, nx))
 mesh[1:ny-1, 1:nx-1] = 0
