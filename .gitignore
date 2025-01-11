@@ -11,3 +11,4 @@ objs/
 *.gif
 *.raw
 *.o
+.idea/*
