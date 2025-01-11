@@ -12,3 +12,4 @@ objs/
 *.raw
 *.o
 .idea/*
+./gif/*.png
