@@ -1,8 +1,12 @@
+#include <assert.h> // Pour les assertions
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <iostream> // Pour debug ou affichage
+
 #include "args.hxx" // Pour parser les arguments
-#include <assert.h> // Pour les assertions
+
+// initialisation des blocs
+#define BLOCK_SIZE 32
 
 
 // initialisation des directions
@@ -22,8 +26,8 @@
 #define OFFSET_Y (gridDim.x * blockDim.x)
 #define INDEX_FROM(x, y) ((OFFSET_Y) * (y) + (x))
 
-int nx = 1024;
-int ny = 1024;
+int nx = 256;
+int ny = 256;
 
 typedef union Directions {
 	double direction[9];
@@ -351,11 +355,11 @@ int main (int argc, char** argv){
 
 	//============ MAIN LOOP =============
 
-	dim3 dimBlock(32, 32);
-	dim3 dimGrid(32, 32);
+	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
 
 	for(int i=0; i<iter; i++) {
-		collision_step<<<dimGrid, dimBlock>>>(
+		collision_step<<<grid, threads>>>(
 			d_f,
 			d_feq,
 			d_rho,
@@ -376,7 +380,7 @@ int main (int argc, char** argv){
 		// 	d_WALL
 		// );
 
-		propagation_step<<<dimGrid, dimBlock>>>(
+		propagation_step<<<grid, threads>>>(
 			d_f,
 			d_fswap,
 			nx,
