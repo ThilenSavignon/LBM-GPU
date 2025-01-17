@@ -358,6 +358,13 @@ int main (int argc, char** argv){
 	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
 
+	// Init start and end time
+	cudaEvent_t start, stop;
+	float elapsedTime;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start);
+
 	for(int i=0; i<iter; i++) {
 		collision_step<<<grid, threads>>>(
 			d_f,
@@ -396,6 +403,11 @@ int main (int argc, char** argv){
 		// d_fswap = d_ftmp;
 	}
 
+	// Stop the timer
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedTime, start, stop);
+
 	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
 	cudaMemcpy(feq, d_feq, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
 	cudaMemcpy(rho, d_rho, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
@@ -407,7 +419,8 @@ int main (int argc, char** argv){
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
-	
+	std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
+
 	// printdirection(f, nx, ny);
 	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	//=============== END ================
@@ -422,6 +435,20 @@ int main (int argc, char** argv){
 	delete[] DR;
 	delete[] WALL;
 	delete[] FL;
+
+	cudaFree(d_f);
+	cudaFree(d_fswap);
+	cudaFree(d_feq);
+	cudaFree(d_rho);
+	cudaFree(d_ux);
+	cudaFree(d_uy);
+	cudaFree(d_usqr);
+	cudaFree(d_DR);
+	cudaFree(d_WALL);
+	cudaFree(d_FL);
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
 
 	return 0;
 }
