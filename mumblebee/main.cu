@@ -211,6 +211,72 @@ __global__ void index_testing(directions_t *f, bool *WL) {
 	}
 }
 
+__global__ void init_mesh(int *mesh, int nx, int ny){
+
+	if(INDEX < ny)
+		mesh[INDEX]=2; // le fluide est injecté à gauche
+	else if (INDEX % ny == 0 || INDEX % ny == ny-1 || INDEX > nx*ny-ny)
+		mesh[INDEX] = 1; // les bords sont des murs
+	else
+		mesh[INDEX] = 0; // le reste est du fluide
+    
+}
+
+__global__ void init_sim(
+	directions_t *f,
+	directions_t *feq,
+	double *rho,
+	double *ux,
+	double *uy,
+	double *usqr,
+	double rho_0
+	){
+
+	for(int j = 0; j<9; j++) {
+		feq[INDEX].direction[j] = 0;
+	}
+
+	f[INDEX].c = rho_0 * 4. / 9.;
+	f[INDEX].e = rho_0 / 9.;
+	f[INDEX].s = rho_0 / 9.;
+	f[INDEX].w = rho_0 / 9.;
+	f[INDEX].n = rho_0 / 9.;
+	f[INDEX].ne = rho_0 / 36.;
+	f[INDEX].se = rho_0 / 36.;
+	f[INDEX].sw = rho_0 / 36.;
+	f[INDEX].nw = rho_0 / 36.;
+
+	rho[INDEX]=0; 
+	ux[INDEX]=0; 
+	uy[INDEX]=0; 
+	usqr[INDEX]=0;
+    
+}
+
+__global__ void init_fluid(
+	int *mesh,
+	bool *DR,
+	bool *WL,
+	bool *FL){
+	
+	if(mesh[INDEX]==0){
+		FL[INDEX] = true;
+		WL[INDEX] = false; // Store the flattened index
+		DR[INDEX] = false; // Store the flattened index
+		
+	}else if(mesh[INDEX]==1){
+		FL[INDEX] = false;
+		WL[INDEX] = true; // Store the flattened index
+		DR[INDEX] = false; // Store the flattened index
+	}else if (mesh[INDEX]==2){
+		FL[INDEX] = false;
+		WL[INDEX] = false; // Store the flattened index
+		DR[INDEX] = true; // Store the flattened index
+	}
+
+
+}
+
 int main (int argc, char** argv){
 
 	// Define parser
@@ -262,14 +328,6 @@ int main (int argc, char** argv){
 
     // initialisation de la grille de la simulation
     int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
-    for(long i = 0; i<nx*ny; i++){
-		if(i < ny)
-			mesh[i]=2; // le fluide est injecté à gauche
-		else if (i % ny == 0 || i % ny == ny-1 || i > nx*ny-ny)
-			mesh[i] = 1; // les bords sont des murs
-		else
-			mesh[i] = 0; // le reste est du fluide
-    }
     
     directions_t *f, *feq;
 	double *rho, *ux, *uy, *usqr;
@@ -279,48 +337,12 @@ int main (int argc, char** argv){
 	ux = new double[nx*ny]; // macroscopic velocity in direction x
 	uy = new double[nx*ny]; // macroscopic velocity in direction y
 	usqr = new double[nx*ny]; // helper variable
-	for(long i = 0; i<nx*ny; i++){
-		for(int j = 0; j<9; j++) {
-			feq[i].direction[j] = 0;
-		}
 
-		f[i].c = rho_0 * 4. / 9.;
-		f[i].e = rho_0 / 9.;
-		f[i].s = rho_0 / 9.;
-		f[i].w = rho_0 / 9.;
-		f[i].n = rho_0 / 9.;
-		f[i].ne = rho_0 / 36.;
-		f[i].se = rho_0 / 36.;
-		f[i].sw = rho_0 / 36.;
-		f[i].nw = rho_0 / 36.;
-
-        rho[i]=0; 
-        ux[i]=0; 
-        uy[i]=0; 
-        usqr[i]=0;
-    }
 
 	bool *DR, *WALL, *FL;
 	DR = new bool[nx*ny]; // driving fluid
 	WALL = new bool[nx*ny]; // wall
 	FL = new bool[nx*ny]; // fluid
-
-	for(long i = 0; i<nx*ny; i++){
-		if(mesh[i]==0){
-			FL[i] = true;
-			WALL[i] = false; // Store the flattened index
-			DR[i] = false; // Store the flattened index
-			
-		}else if(mesh[i]==1){
-			FL[i] = false;
-			WALL[i] = true; // Store the flattened index
-			DR[i] = false; // Store the flattened index
-		}else if (mesh[i]==2){
-			FL[i] = false;
-			WALL[i] = false; // Store the flattened index
-			DR[i] = true; // Store the flattened index
-		}
-	}
 
 	if (print) {
 		printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
@@ -330,6 +352,8 @@ int main (int argc, char** argv){
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
 	double *d_rho, *d_ux, *d_uy, *d_usqr;
 	bool *d_DR, *d_WALL, *d_FL;
+	int *d_mesh;
+	
 
 	cudaMalloc(&d_f, nx*ny*sizeof(directions_t));
 	cudaMalloc(&d_fswap, nx*ny*sizeof(directions_t));
@@ -341,30 +365,46 @@ int main (int argc, char** argv){
 	cudaMalloc(&d_DR, nx*ny*sizeof(bool));
 	cudaMalloc(&d_WALL, nx*ny*sizeof(bool));
 	cudaMalloc(&d_FL, nx*ny*sizeof(bool));
-
-	cudaMemcpy(d_f, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_fswap, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_feq, feq, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_rho, rho, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_ux, ux, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_uy, uy, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_usqr, usqr, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_DR, DR, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_WALL, WALL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_FL, FL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
-
-	//============ MAIN LOOP =============
-
-	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
-	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
-
-	// Init start and end time
-	cudaEvent_t start, stop;
+	cudaMalloc(&d_mesh, nx*ny*sizeof(int));
+	
+	cudaEvent_t start,stop;
 	float elapsedTime;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
+	
 	cudaEventRecord(start);
 
+	//========== INITIALISATION ==========
+	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
+
+	init_mesh<<<grid, threads>>>(
+		d_mesh,
+		nx,
+		ny
+	);
+
+	init_sim<<<grid, threads>>>(
+		d_f,
+		d_feq,
+		d_rho,
+		d_ux,
+		d_uy,
+		d_usqr,
+		rho_0
+	);
+	
+	
+	init_fluid<<<grid, threads>>>(
+		d_mesh,
+		d_DR,
+		d_WALL,
+		d_FL
+	);
+	
+	cudaMemcpy(d_fswap, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToDevice);
+	//============ MAIN LOOP =============
+	
 	for(int i=0; i<iter; i++) {
 		collision_step<<<grid, threads>>>(
 			d_f,
@@ -401,6 +441,11 @@ int main (int argc, char** argv){
 
 		// d_ftmp = d_fswap;
 		// d_fswap = d_ftmp;
+		cudaEventRecord(stop);
+
+		cudaEventSynchronize(stop);
+
+		cudaEventElapsedTime(&elapsedTime,start,stop);
 	}
 
 	// Stop the timer
@@ -417,6 +462,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(DR, d_DR, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
 	std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
