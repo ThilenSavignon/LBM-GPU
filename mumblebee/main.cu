@@ -367,7 +367,12 @@ int main (int argc, char** argv){
 	cudaMalloc(&d_FL, nx*ny*sizeof(bool));
 	cudaMalloc(&d_mesh, nx*ny*sizeof(int));
 	
+	cudaEvent_t start,stop;
+	float time;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
 	
+	cudaEventRecord(start);
 
 	//========== INITIALISATION ==========
 	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
@@ -396,13 +401,32 @@ int main (int argc, char** argv){
 		d_WALL,
 		d_FL
 	);
-
-
-	cudaDeviceSynchronize();
-	//============ MAIN LOOP =============
+	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+	cudaMemcpy(feq, d_feq, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
+	cudaMemcpy(rho, d_rho, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(ux, d_ux, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(uy, d_uy, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(usqr, d_usqr, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(DR, d_DR, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost); 
 
 	
 
+	cudaMemcpy(d_f, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_fswap, f, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_feq, feq, nx*ny*sizeof(directions_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_rho, rho, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_ux, ux, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_uy, uy, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_usqr, usqr, nx*ny*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_DR, DR, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_WALL, WALL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_FL, FL, nx*ny*sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_mesh,mesh, nx*ny*sizeof(int),cudaMemcpyHostToDevice); 
+	//============ MAIN LOOP =============
+	
 	for(int i=0; i<iter; i++) {
 		collision_step<<<grid, threads>>>(
 			d_f,
@@ -439,6 +463,11 @@ int main (int argc, char** argv){
 
 		// d_ftmp = d_fswap;
 		// d_fswap = d_ftmp;
+		cudaEventRecord(stop);
+
+		cudaEventSynchronize(stop);
+
+		cudaEventElapsedTime(&time,start,stop);
 	}
 
 	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
@@ -453,7 +482,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
-	
+	std::cout << time << "ms" << std::endl;
 	// printdirection(f, nx, ny);
 	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	//=============== END ================
@@ -468,6 +497,7 @@ int main (int argc, char** argv){
 	delete[] DR;
 	delete[] WALL;
 	delete[] FL;
-
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
 	return 0;
 }
