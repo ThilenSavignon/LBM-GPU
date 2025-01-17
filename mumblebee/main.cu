@@ -460,7 +460,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
-	//std::cout << time << "ms" << std::endl;
+	// std::cout << time << "ms" << std::endl;
 	// printdirection(f, nx, ny);
 	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
 	//=============== END ================
