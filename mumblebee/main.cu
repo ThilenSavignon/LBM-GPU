@@ -279,12 +279,15 @@ __global__ void init_fluid(
 
 int main (int argc, char** argv){
 
+	int* matrix = NULL;
+
 	// Define parser
 	args::ArgumentParser parser("main", "This is a main program for the LBM simulation");
 
 	// Set parser value
 	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 	args::Flag print(parser, "print", "print the matrix at the end", {"p"});
+	args::ValueFlag<std::string> importfile(parser, "file", "File to read", {"f"});
 	args::ValueFlag<int> width(parser, "width", "Width of matrix ", {"w"}, 32);
 	args::ValueFlag<int> height(parser, "height", "Height of matrix ", {"h"},32);
 	args::ValueFlag<int> iterations(parser, "iteration", "Number of iterations", {"i"}, 3000);
@@ -343,11 +346,50 @@ int main (int argc, char** argv){
 	DR = new bool[nx*ny]; // driving fluid
 	WALL = new bool[nx*ny]; // wall
 	FL = new bool[nx*ny]; // fluid
+	
+	std::string path = args::get(importfile);
+	if (!path.empty()) {
+		FILE *file = fopen(path.c_str(), "r");
+		if (file == NULL) {
+			perror("Erreur lors de l'ouverture du fichier");
+			return EXIT_FAILURE;
+		}
 
-	if (print) {
-		printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
+		if (fscanf(file, "%d %d", &nx, &ny) != 2) {
+			fprintf(stderr, "Erreur de lecture des dimensions de la matrice\n");
+			fclose(file);
+			return EXIT_FAILURE;
+		}
+
+		matrix = (int *)malloc(ny * nx * sizeof(int));
+		if (matrix == NULL) {
+			fprintf(stderr, "Erreur d'allocation mémoire\n");
+			fclose(file);
+			return EXIT_FAILURE;
+		}
+
+		for (int i = 0; i < ny*nx; i++) {
+			if (fscanf(file, "%d", &matrix[i]) != 1) {
+				fprintf(stderr, "Erreur de lecture des valeurs\n");
+				return EXIT_FAILURE;
+			}
+		}
+
+		fclose(file);
+
+		// printf("Matrice lue :\n");
+		// for (int i = 0; i < ny*nx; i++) {
+		// 	if (i % nx == 0) {
+		// 		printf("\n");
+		// 	}
+		// 	printf("%d ", matrix[i]);
+		// }
+
 	}
 
+	// std::cout << "nx = " << nx << std::endl;
+	// std::cout << "ny = " << ny << std::endl;
+	
 	//================= CUDA =================
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
 	double *d_rho, *d_ux, *d_uy, *d_usqr;
@@ -378,11 +420,21 @@ int main (int argc, char** argv){
 	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
 
-	init_mesh<<<grid, threads>>>(
-		d_mesh,
-		nx,
-		ny
-	);
+	if(path.empty()) {
+		init_mesh<<<grid, threads>>>(
+			d_mesh,
+			nx,
+			ny
+		);
+	} else {
+		cudaMemcpy(d_mesh, matrix, nx*ny*sizeof(int), cudaMemcpyHostToDevice);
+	}
+
+
+	if (print) {
+		cudaMemcpy(mesh, d_mesh, nx*ny*sizeof(int), cudaMemcpyDeviceToHost);
+		printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
+	}
 
 	init_sim<<<grid, threads>>>(
 		d_f,
@@ -465,7 +517,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
-	std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
+	// std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
 
 	// printdirection(f, nx, ny);
 	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
@@ -495,6 +547,11 @@ int main (int argc, char** argv){
 
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
+
+
+	if (importfile) {
+		free(matrix);
+	}
 
 	return 0;
 }
