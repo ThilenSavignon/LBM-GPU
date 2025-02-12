@@ -6,7 +6,7 @@
 #include "args.hxx" // Pour parser les arguments
 
 // initialisation des blocs
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 16
 
 
 // initialisation des directions
@@ -20,6 +20,7 @@
 #define SW	7
 #define NW	8
 
+#define BLOCK_INDEX ((blockDim.x * threadIdx.y) + threadIdx.x)
 #define INDEX (gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y) + blockIdx.x * blockDim.x + threadIdx.x)
 #define INDEX_X (blockIdx.x * blockDim.x + threadIdx.x)
 #define INDEX_Y	(blockDim.y * blockIdx.y + threadIdx.y)
@@ -135,6 +136,78 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 	print_matrix(FL, nx*ny);
 }
 
+__global__ void collision_step_shared (
+	directions_t *f,
+	directions_t *feq,
+	double *rho,
+	double *ux,
+	double *uy,
+	double *usqr,
+	bool *DR,
+	bool *WL,
+	bool *FL,
+	double u_0,
+	double tau,
+	int nf) {
+	
+	// Shared memory initialization
+	extern __shared__ directions_t ffeq_buffer[];
+	directions_t* f_buffer = ffeq_buffer;
+	directions_t* feq_buffer = &ffeq_buffer[nf];
+
+	// Shared memory filling from global memory (no need to copy feq)
+	f_buffer[BLOCK_INDEX] = f[INDEX];
+
+	// Sync
+	__syncthreads();
+
+	// Macroscopic density
+	rho[INDEX] = 0;
+	for (int i=0; i<9; i++) {
+		rho[INDEX] += f_buffer[BLOCK_INDEX].direction[i];
+	}
+
+	// Macroscopic velocities
+	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[BLOCK_INDEX].e - f_buffer[BLOCK_INDEX].w + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw - f_buffer[BLOCK_INDEX].nw) / rho[INDEX]);
+	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[BLOCK_INDEX].n - f_buffer[BLOCK_INDEX].s + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].nw - f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw) / rho[INDEX]);
+	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
+
+	feq_buffer[BLOCK_INDEX].c = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].e = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].s = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].w = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].n = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].ne = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].se = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].sw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX].nw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+
+	if(WL[INDEX]) {
+		f_buffer[BLOCK_INDEX].e = f_buffer[BLOCK_INDEX].w;
+		f_buffer[BLOCK_INDEX].s = f_buffer[BLOCK_INDEX].n;
+		f_buffer[BLOCK_INDEX].w = f_buffer[BLOCK_INDEX].e;
+		f_buffer[BLOCK_INDEX].n = f_buffer[BLOCK_INDEX].s;
+		f_buffer[BLOCK_INDEX].ne = f_buffer[BLOCK_INDEX].sw;
+		f_buffer[BLOCK_INDEX].se = f_buffer[BLOCK_INDEX].nw;
+		f_buffer[BLOCK_INDEX].sw = f_buffer[BLOCK_INDEX].ne;
+		f_buffer[BLOCK_INDEX].nw = f_buffer[BLOCK_INDEX].se;
+	} else if (DR[INDEX]) {
+		for (int i=0; i<9; i++) {
+			f_buffer[BLOCK_INDEX].direction[i] = feq_buffer[BLOCK_INDEX].direction[i];
+		}
+	} else {
+		for (int i=0; i<9; i++) {
+			f_buffer[BLOCK_INDEX].direction[i] = f_buffer[BLOCK_INDEX].direction[i] * (1. - 1. / tau) + feq_buffer[BLOCK_INDEX].direction[i] / tau;
+		}
+	}
+
+	__syncthreads();
+
+	// Writing back to global memory
+	f[INDEX] = f_buffer[BLOCK_INDEX];
+	feq[INDEX] = feq_buffer[BLOCK_INDEX];
+}
+
 __global__ void collision_step (
 	directions_t *f,
 	directions_t *feq,
@@ -187,6 +260,26 @@ __global__ void collision_step (
 			f[INDEX].direction[i] = f[INDEX].direction[i] * (1. - 1. / tau) + feq[INDEX].direction[i] / tau;
 		}
 	}
+}
+
+__global__ void propagation_step_shared(directions_t *f_src, directions_t *f_dst, int nx, int ny) {
+	extern __shared__ directions_t buffer[];
+
+	if(INDEX_X < nx-1)	buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y)].e = f_src[INDEX].e;
+	if(INDEX_X > 0)		buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y)].w = f_src[INDEX].w;
+	if(INDEX_Y < ny-1)	buffer[INDEX_FROM(INDEX_X, INDEX_Y + 1)].s = f_src[INDEX].s;
+	if(INDEX_Y > 0)		buffer[INDEX_FROM(INDEX_X, INDEX_Y - 1)].n = f_src[INDEX].n;
+	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)].se = f_src[INDEX].se;
+	if(INDEX_X < nx-1 && INDEX_Y > 0)		buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)].ne = f_src[INDEX].ne;
+	if(INDEX_X > 0 && INDEX_Y < ny-1)		buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
+	if(INDEX_X > 0 && INDEX_Y > 0)			buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
+
+	__syncthreads();
+
+	f_dst[INDEX] = buffer[INDEX];
+
+	// Maybe useless
+	__syncthreads();
 }
 
 __global__ void propagation_step(directions_t *f_src, directions_t *f_dst, int nx, int ny) {
@@ -456,9 +549,27 @@ int main (int argc, char** argv){
 	
 	cudaMemcpy(d_fswap, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToDevice);
 	//============ MAIN LOOP =============
+
+	// fprintf(stdout, "Shared memory size: %lu\n", BLOCK_SIZE * BLOCK_SIZE * sizeof(directions_t) * 2);
 	
 	for(int i=0; i<iter; i++) {
-		collision_step<<<grid, threads>>>(
+		collision_step_shared<<<grid, threads, BLOCK_SIZE * BLOCK_SIZE * sizeof(directions_t) * 2>>>(
+			d_f,
+			d_feq,
+			d_rho,
+			d_ux,
+			d_uy,
+			d_usqr,
+			d_DR,
+			d_WALL,
+			d_FL,
+			u_0,
+			tau,
+			BLOCK_SIZE*BLOCK_SIZE
+		);
+		// fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
+
+		/* collision_step<<<grid, threads>>>(
 			d_f,
 			d_feq,
 			d_rho,
@@ -470,7 +581,7 @@ int main (int argc, char** argv){
 			d_FL,
 			u_0,
 			tau
-		);
+		); */
 
 		// cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
 		// printdirection(f, nx, ny);
@@ -478,6 +589,15 @@ int main (int argc, char** argv){
 		// 	d_f,
 		// 	d_WALL
 		// );
+
+		/* propagation_step_shared<<<grid, threads, nx*ny*sizeof(directions_t)>>>(
+			d_f,
+			d_fswap,
+			nx,
+			ny
+		); */
+
+		// fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
 
 		propagation_step<<<grid, threads>>>(
 			d_f,

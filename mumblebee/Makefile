@@ -1,5 +1,5 @@
 CC = nvcc
-CFLAGS = -Werror all-warnings
+CFLAGS = -Werror all-warnings -lineinfo
 
 SRCS = main.cu
 OBJS = $(SRCS:.cu=.o)
