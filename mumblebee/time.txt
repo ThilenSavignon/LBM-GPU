@@ -1,4 +1,15 @@
-config romain: 550ms (256/256 3000 it), 8591ms (1024/1024 - 3000it)
-config nash: 1419.18ms (256/256 - 3000 it)
-config pc: 7845.42ms (256/256 - 3000 it)
+config romain:
+    - 550ms (256/256 3000 it)
+    - 8591ms (1024/1024 3000 it)
+(start sharisation)
+    - 680ms (256/256 3000 it)
+    - 6469ms (256/256 30000 it) 
+    - 10393ms (1024/1024 3000 it) 
+    - 104441ms (1024/1024 30000 it)
+
+config nash:
+    - 1419.18ms (256/256 - 3000 it)
+
+config pc:
+    - 7845.42ms (256/256 - 3000 it)
 
