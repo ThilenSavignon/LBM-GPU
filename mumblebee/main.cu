@@ -21,6 +21,7 @@
 #define NW	(256)
 
 #define BLOCK_INDEX ((blockDim.x * threadIdx.y) + threadIdx.x)
+#define SHARED_BLOCK_INDEX ( ( ( (int) BLOCK_INDEX ) / 32 ) + ( ( (int) BLOCK_INDEX ) % 32 ) )
 #define INDEX (gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y) + blockIdx.x * blockDim.x + threadIdx.x)
 #define INDEX_X (blockIdx.x * blockDim.x + threadIdx.x)
 #define INDEX_Y	(blockDim.y * blockIdx.y + threadIdx.y)
@@ -169,7 +170,7 @@ __global__ void collision_step_shared (
 	f_buffer[BLOCK_INDEX + SW] = cell.sw; */
 
 	for (int i=0; i<9; i++) {
-		f_buffer[BLOCK_INDEX + (i*32)] = cell.direction[i];
+		f_buffer[SHARED_BLOCK_INDEX + (i*32)] = cell.direction[i];
 	}
 
 
@@ -179,40 +180,40 @@ __global__ void collision_step_shared (
 	// Macroscopic density
 	rho[INDEX] = 0;
 	for (int i=0; i<9; i++) {
-		rho[INDEX] += f_buffer[BLOCK_INDEX + (i*32)];
+		rho[INDEX] += f_buffer[SHARED_BLOCK_INDEX + (i*32)];
 	}
 
 	// Macroscopic velocities
-	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[BLOCK_INDEX + E] - f_buffer[BLOCK_INDEX + W] + f_buffer[BLOCK_INDEX + NE] + f_buffer[BLOCK_INDEX + SE] - f_buffer[BLOCK_INDEX + SW] - f_buffer[BLOCK_INDEX + NW]) / rho[INDEX]);
-	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[BLOCK_INDEX + N] - f_buffer[BLOCK_INDEX + S] + f_buffer[BLOCK_INDEX + NE] + f_buffer[BLOCK_INDEX + NW] - f_buffer[BLOCK_INDEX + SE] - f_buffer[BLOCK_INDEX + SW]) / rho[INDEX]);
+	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[SHARED_BLOCK_INDEX + E] - f_buffer[SHARED_BLOCK_INDEX + W] + f_buffer[SHARED_BLOCK_INDEX + NE] + f_buffer[SHARED_BLOCK_INDEX + SE] - f_buffer[SHARED_BLOCK_INDEX + SW] - f_buffer[SHARED_BLOCK_INDEX + NW]) / rho[INDEX]);
+	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[SHARED_BLOCK_INDEX + N] - f_buffer[SHARED_BLOCK_INDEX + S] + f_buffer[SHARED_BLOCK_INDEX + NE] + f_buffer[SHARED_BLOCK_INDEX + NW] - f_buffer[SHARED_BLOCK_INDEX + SE] - f_buffer[SHARED_BLOCK_INDEX + SW]) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
 
-	feq_buffer[BLOCK_INDEX + C] = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + E] = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + S] = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + W] = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + N] = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + NE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + SE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + SW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX + NW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + C] = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + E] = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + S] = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + W] = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + N] = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + NE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + SE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + SW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[SHARED_BLOCK_INDEX + NW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
 
 	if(WL[INDEX]) {
-		f_buffer[BLOCK_INDEX + E] = f_buffer[BLOCK_INDEX + W];
-		f_buffer[BLOCK_INDEX + S] = f_buffer[BLOCK_INDEX + N];
-		f_buffer[BLOCK_INDEX + W] = f_buffer[BLOCK_INDEX + E];
-		f_buffer[BLOCK_INDEX + N] = f_buffer[BLOCK_INDEX + S];
-		f_buffer[BLOCK_INDEX + NE] = f_buffer[BLOCK_INDEX + SW];
-		f_buffer[BLOCK_INDEX + SE] = f_buffer[BLOCK_INDEX + NW];
-		f_buffer[BLOCK_INDEX + SW] = f_buffer[BLOCK_INDEX + NE];
-		f_buffer[BLOCK_INDEX + NW] = f_buffer[BLOCK_INDEX + SE];
+		f_buffer[SHARED_BLOCK_INDEX + E] = f_buffer[SHARED_BLOCK_INDEX + W];
+		f_buffer[SHARED_BLOCK_INDEX + S] = f_buffer[SHARED_BLOCK_INDEX + N];
+		f_buffer[SHARED_BLOCK_INDEX + W] = f_buffer[SHARED_BLOCK_INDEX + E];
+		f_buffer[SHARED_BLOCK_INDEX + N] = f_buffer[SHARED_BLOCK_INDEX + S];
+		f_buffer[SHARED_BLOCK_INDEX + NE] = f_buffer[SHARED_BLOCK_INDEX + SW];
+		f_buffer[SHARED_BLOCK_INDEX + SE] = f_buffer[SHARED_BLOCK_INDEX + NW];
+		f_buffer[SHARED_BLOCK_INDEX + SW] = f_buffer[SHARED_BLOCK_INDEX + NE];
+		f_buffer[SHARED_BLOCK_INDEX + NW] = f_buffer[SHARED_BLOCK_INDEX + SE];
 	} else if (DR[INDEX]) {
 		for (int i=0; i<9; i++) {
-			f_buffer[BLOCK_INDEX + (i*32)] = feq_buffer[BLOCK_INDEX + (i*32)];
+			f_buffer[SHARED_BLOCK_INDEX + (i*32)] = feq_buffer[SHARED_BLOCK_INDEX + (i*32)];
 		}
 	} else {
 		for (int i=0; i<9; i++) {
-			f_buffer[BLOCK_INDEX + (i*32)] = f_buffer[BLOCK_INDEX + (i*32)] * (1. - 1. / tau) + feq_buffer[BLOCK_INDEX + (i*32)] / tau;
+			f_buffer[SHARED_BLOCK_INDEX + (i*32)] = f_buffer[SHARED_BLOCK_INDEX + (i*32)] * (1. - 1. / tau) + feq_buffer[SHARED_BLOCK_INDEX + (i*32)] / tau;
 		}
 	}
 
@@ -221,9 +222,11 @@ __global__ void collision_step_shared (
 	// Writing back to global memory
 	directions_t cell_f, cell_feq;
 	for (int i=0; i<9; i++) {
-		cell_f.direction[i] = f_buffer[BLOCK_INDEX + (i*32)];
-		cell_feq.direction[i] = feq_buffer[BLOCK_INDEX + (i*32)];
+		cell_f.direction[i] = f_buffer[SHARED_BLOCK_INDEX + (i*32)];
+		cell_feq.direction[i] = feq_buffer[SHARED_BLOCK_INDEX + (i*32)];
 	}
+
+	__syncthreads();
 
 	f[INDEX] = cell_f;
 	feq[INDEX] = cell_feq;
@@ -588,7 +591,7 @@ int main (int argc, char** argv){
 			tau,
 			BLOCK_SIZE*BLOCK_SIZE
 		);
-		// fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
+		fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
 
 		/* collision_step<<<grid, threads>>>(
 			d_f,
