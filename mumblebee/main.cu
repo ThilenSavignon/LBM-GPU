@@ -534,8 +534,18 @@ int main (int argc, char** argv){
 	cudaEventRecord(start);
 
 	//========== INITIALISATION ==========
-	dim3 threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
-	dim3 grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
+
+	dim3 threads;
+	dim3 grid;
+
+	if(is_shared) {
+		// printf("Using shared memory\n");
+		threads = dim3(TILE_SIZE, TILE_SIZE);
+		grid = dim3(nx / TILE_SIZE, ny / TILE_SIZE);
+	} else {
+		threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
+		grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
+	}
 
 	if(path.empty()) {
 		init_mesh<<<grid, threads>>>(
