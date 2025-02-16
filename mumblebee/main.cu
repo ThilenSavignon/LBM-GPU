@@ -31,17 +31,17 @@ int nx = 256;
 int ny = 256;
 
 typedef union Directions {
-	double direction[9];
+	float direction[9];
 	struct {
-		double c;
-		double e;
-		double s;
-		double w;
-		double n;
-		double ne;
-		double se;
-		double sw;
-		double nw;
+		float c;
+		float e;
+		float s;
+		float w;
+		float n;
+		float ne;
+		float se;
+		float sw;
+		float nw;
 	};
 } directions_t;
 
@@ -93,7 +93,7 @@ void printdirection (directions_t *f, int nx, int ny){
 }
 
 // fonction pour afficher toutes les données (rho, ux, uy, f, feq...) passées en paramètre
-void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, double viscosity, double tau, int* mesh, directions_t *f, directions_t *feq, double *rho, double *ux, double *uy, double *usqr, bool *DR, bool *WL, bool *FL) {
+void printData(int nx, int ny, int iter, int Re, float rho_0, float u_0, float viscosity, float tau, int* mesh, directions_t *f, directions_t *feq, float *rho, float *ux, float *uy, float *usqr, bool *DR, bool *WL, bool *FL) {
 	std::cout << "##########################################################################################################\n##########################################################################################################\n##########################################################################################################\n##########################################################################################################" << std::endl;
 	std::cout << "nx = " << nx << std::endl;
 	std::cout << "ny = " << ny << std::endl;
@@ -139,15 +139,15 @@ void printData(int nx, int ny, int iter, int Re, double rho_0, double u_0, doubl
 __global__ void collision_step_shared (
 	directions_t *f,
 	directions_t *feq,
-	double *rho,
-	double *ux,
-	double *uy,
-	double *usqr,
+	float *rho,
+	float *ux,
+	float *uy,
+	float *usqr,
 	bool *DR,
 	bool *WL,
 	bool *FL,
-	double u_0,
-	double tau,
+	float u_0,
+	float tau,
 	int nf) {
 	
 	// Shared memory initialization
@@ -211,15 +211,15 @@ __global__ void collision_step_shared (
 __global__ void collision_step (
 	directions_t *f,
 	directions_t *feq,
-	double *rho,
-	double *ux,
-	double *uy,
-	double *usqr,
+	float *rho,
+	float *ux,
+	float *uy,
+	float *usqr,
 	bool *DR,
 	bool *WL,
 	bool *FL,
-	double u_0,
-	double tau) {
+	float u_0,
+	float tau) {
 	
 	// Macroscopic density
 	rho[INDEX] = 0;
@@ -318,11 +318,11 @@ __global__ void init_mesh(int *mesh, int nx, int ny){
 __global__ void init_sim(
 	directions_t *f,
 	directions_t *feq,
-	double *rho,
-	double *ux,
-	double *uy,
-	double *usqr,
-	double rho_0
+	float *rho,
+	float *ux,
+	float *uy,
+	float *usqr,
+	float rho_0
 	){
 
 	for(int j = 0; j<9; j++) {
@@ -415,7 +415,7 @@ int main (int argc, char** argv){
 	Re=1000; // nombre de Reynolds
 
     // initialisation des variables
-    double  rho_0, u_0, viscosity, tau;
+    float  rho_0, u_0, viscosity, tau;
     rho_0 = 1; // densite initiale
     u_0 = 0.1; // vitesse initiale
 	viscosity = (ny-1)*u_0/Re; // viscosite
@@ -426,13 +426,13 @@ int main (int argc, char** argv){
     int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
     
     directions_t *f, *feq;
-	double *rho, *ux, *uy, *usqr;
+	float *rho, *ux, *uy, *usqr;
 	f = new directions_t[nx*ny]; // distribution function
 	feq = new directions_t[nx*ny]; // equilibrium distribution function
-	rho = new double[nx*ny]; // macroscopic density
-	ux = new double[nx*ny]; // macroscopic velocity in direction x
-	uy = new double[nx*ny]; // macroscopic velocity in direction y
-	usqr = new double[nx*ny]; // helper variable
+	rho = new float[nx*ny]; // macroscopic density
+	ux = new float[nx*ny]; // macroscopic velocity in direction x
+	uy = new float[nx*ny]; // macroscopic velocity in direction y
+	usqr = new float[nx*ny]; // helper variable
 
 
 	bool *DR, *WALL, *FL;
@@ -485,7 +485,7 @@ int main (int argc, char** argv){
 	
 	//================= CUDA =================
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
-	double *d_rho, *d_ux, *d_uy, *d_usqr;
+	float *d_rho, *d_ux, *d_uy, *d_usqr;
 	bool *d_DR, *d_WALL, *d_FL;
 	int *d_mesh;
 	
@@ -493,10 +493,10 @@ int main (int argc, char** argv){
 	cudaMalloc(&d_f, nx*ny*sizeof(directions_t));
 	cudaMalloc(&d_fswap, nx*ny*sizeof(directions_t));
 	cudaMalloc(&d_feq, nx*ny*sizeof(directions_t));
-	cudaMalloc(&d_rho, nx*ny*sizeof(double));
-	cudaMalloc(&d_ux, nx*ny*sizeof(double));
-	cudaMalloc(&d_uy, nx*ny*sizeof(double));
-	cudaMalloc(&d_usqr, nx*ny*sizeof(double));
+	cudaMalloc(&d_rho, nx*ny*sizeof(float));
+	cudaMalloc(&d_ux, nx*ny*sizeof(float));
+	cudaMalloc(&d_uy, nx*ny*sizeof(float));
+	cudaMalloc(&d_usqr, nx*ny*sizeof(float));
 	cudaMalloc(&d_DR, nx*ny*sizeof(bool));
 	cudaMalloc(&d_WALL, nx*ny*sizeof(bool));
 	cudaMalloc(&d_FL, nx*ny*sizeof(bool));
@@ -627,10 +627,10 @@ int main (int argc, char** argv){
 
 	cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
 	cudaMemcpy(feq, d_feq, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
-	cudaMemcpy(rho, d_rho, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(ux, d_ux, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(uy, d_uy, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(usqr, d_usqr, nx*ny*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(rho, d_rho, nx*ny*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(ux, d_ux, nx*ny*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(uy, d_uy, nx*ny*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(usqr, d_usqr, nx*ny*sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(DR, d_DR, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(WALL, d_WALL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
