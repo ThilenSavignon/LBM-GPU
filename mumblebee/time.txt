@@ -1,19 +1,26 @@
 config romain:
+-iter GPU global
     - 575ms (256/256 3000 it)
     - 5164ms (256/256 30000 it)
     - 9469ms (1024/1024 3000 it)
     - 96780ms (1024/1024 30000 it)
-(full GPU)
+-full GPU global
     - 580ms (256/256 3000 it)
     - 5376ms (256/256 30000 it)
     - 9598ms (1024/1024 3000 it)
     - 98269ms (1024/1024 30000 it)
-(start sharisation)
+-full GPU global Float precision
+    - 462ms (256/256 3000 it)
+    - 4075ms (256/256 30000 it)
+    - 6208ms (1024/1024 3000 it)
+    - 61649ms (1024/1024 30000 it)
+
+-start sharisation
     - 680ms (256/256 3000 it)
     - 6469ms (256/256 30000 it) 
     - 10393ms (1024/1024 3000 it) 
     - 104441ms (1024/1024 30000 it)
-(Float precision)
+-start sharisation Float precision
     - 525ms (256/256 3000 it)
     - 3452ms (256/256 30000 it)
     - 5195ms (1024/1024 3000 it)
