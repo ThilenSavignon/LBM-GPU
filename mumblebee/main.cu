@@ -10,15 +10,15 @@
 
 
 // initialisation des directions
-#define C	0
-#define E	1
-#define S	2
-#define W	3
-#define N	4
-#define NE	5
-#define SE	6
-#define SW	7
-#define NW	8
+#define C	(0)
+#define E	(32)
+#define S	(64)
+#define W	(96)
+#define N	(128)
+#define NE	(160)
+#define SE	(192)
+#define SW	(224)
+#define NW	(256)
 
 #define BLOCK_INDEX ((blockDim.x * threadIdx.y) + threadIdx.x)
 #define INDEX (gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y) + blockIdx.x * blockDim.x + threadIdx.x)
@@ -148,15 +148,30 @@ __global__ void collision_step_shared (
 	bool *FL,
 	float u_0,
 	float tau,
-	int nf) {
+	int nc) {
 	
 	// Shared memory initialization
-	extern __shared__ directions_t ffeq_buffer[];
-	directions_t* f_buffer = ffeq_buffer;
-	directions_t* feq_buffer = &ffeq_buffer[nf];
+	extern __shared__ float ffeq_buffer[];
+	float* f_buffer = ffeq_buffer;
+	float* feq_buffer = &ffeq_buffer[nc*9];
 
 	// Shared memory filling from global memory (no need to copy feq)
-	f_buffer[BLOCK_INDEX] = f[INDEX];
+	// Loading once from global memory
+	directions_t cell = f[INDEX];
+	/* f_buffer[BLOCK_INDEX + C] = cell.c;
+	f_buffer[BLOCK_INDEX + E] = cell.e;
+	f_buffer[BLOCK_INDEX + S] = cell.s;
+	f_buffer[BLOCK_INDEX + W] = cell.w;
+	f_buffer[BLOCK_INDEX + N] = cell.n;
+	f_buffer[BLOCK_INDEX + NE] = cell.ne;
+	f_buffer[BLOCK_INDEX + SE] = cell.se;
+	f_buffer[BLOCK_INDEX + NW] = cell.nw;
+	f_buffer[BLOCK_INDEX + SW] = cell.sw; */
+
+	for (int i=0; i<9; i++) {
+		f_buffer[BLOCK_INDEX + (i*32)] = cell.direction[i];
+	}
+
 
 	// Sync
 	__syncthreads();
@@ -164,48 +179,54 @@ __global__ void collision_step_shared (
 	// Macroscopic density
 	rho[INDEX] = 0;
 	for (int i=0; i<9; i++) {
-		rho[INDEX] += f_buffer[BLOCK_INDEX].direction[i];
+		rho[INDEX] += f_buffer[BLOCK_INDEX + (i*32)];
 	}
 
 	// Macroscopic velocities
-	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[BLOCK_INDEX].e - f_buffer[BLOCK_INDEX].w + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw - f_buffer[BLOCK_INDEX].nw) / rho[INDEX]);
-	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[BLOCK_INDEX].n - f_buffer[BLOCK_INDEX].s + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].nw - f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw) / rho[INDEX]);
+	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[BLOCK_INDEX + E] - f_buffer[BLOCK_INDEX + W] + f_buffer[BLOCK_INDEX + NE] + f_buffer[BLOCK_INDEX + SE] - f_buffer[BLOCK_INDEX + SW] - f_buffer[BLOCK_INDEX + NW]) / rho[INDEX]);
+	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[BLOCK_INDEX + N] - f_buffer[BLOCK_INDEX + S] + f_buffer[BLOCK_INDEX + NE] + f_buffer[BLOCK_INDEX + NW] - f_buffer[BLOCK_INDEX + SE] - f_buffer[BLOCK_INDEX + SW]) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
 
-	feq_buffer[BLOCK_INDEX].c = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].e = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].s = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].w = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].n = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].ne = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].se = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].sw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
-	feq_buffer[BLOCK_INDEX].nw = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + C] = (4./9.) * rho[INDEX] * (1. - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + E] = (1./9.) * rho[INDEX] * (1. + 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + S] = (1./9.) * rho[INDEX] * (1. - 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + W] = (1./9.) * rho[INDEX] * (1. - 3. * ux[INDEX] + 4.5 * (ux[INDEX] * ux[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + N] = (1./9.) * rho[INDEX] * (1. + 3. * uy[INDEX] + 4.5 * (uy[INDEX] * uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + NE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] + uy[INDEX]) + 4.5 * (ux[INDEX] + uy[INDEX]) * (ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + SE] = (1./36.) * rho[INDEX] * (1. + 3. * (ux[INDEX] - uy[INDEX]) + 4.5 * (ux[INDEX] - uy[INDEX]) * (ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + SW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] - uy[INDEX]) + 4.5 * (-ux[INDEX] - uy[INDEX]) * (-ux[INDEX] - uy[INDEX]) - 1.5 * usqr[INDEX]);
+	feq_buffer[BLOCK_INDEX + NW] = (1./36.) * rho[INDEX] * (1. + 3. * (-ux[INDEX] + uy[INDEX]) + 4.5 * (-ux[INDEX] + uy[INDEX]) * (-ux[INDEX] + uy[INDEX]) - 1.5 * usqr[INDEX]);
 
 	if(WL[INDEX]) {
-		f_buffer[BLOCK_INDEX].e = f_buffer[BLOCK_INDEX].w;
-		f_buffer[BLOCK_INDEX].s = f_buffer[BLOCK_INDEX].n;
-		f_buffer[BLOCK_INDEX].w = f_buffer[BLOCK_INDEX].e;
-		f_buffer[BLOCK_INDEX].n = f_buffer[BLOCK_INDEX].s;
-		f_buffer[BLOCK_INDEX].ne = f_buffer[BLOCK_INDEX].sw;
-		f_buffer[BLOCK_INDEX].se = f_buffer[BLOCK_INDEX].nw;
-		f_buffer[BLOCK_INDEX].sw = f_buffer[BLOCK_INDEX].ne;
-		f_buffer[BLOCK_INDEX].nw = f_buffer[BLOCK_INDEX].se;
+		f_buffer[BLOCK_INDEX + E] = f_buffer[BLOCK_INDEX + W];
+		f_buffer[BLOCK_INDEX + S] = f_buffer[BLOCK_INDEX + N];
+		f_buffer[BLOCK_INDEX + W] = f_buffer[BLOCK_INDEX + E];
+		f_buffer[BLOCK_INDEX + N] = f_buffer[BLOCK_INDEX + S];
+		f_buffer[BLOCK_INDEX + NE] = f_buffer[BLOCK_INDEX + SW];
+		f_buffer[BLOCK_INDEX + SE] = f_buffer[BLOCK_INDEX + NW];
+		f_buffer[BLOCK_INDEX + SW] = f_buffer[BLOCK_INDEX + NE];
+		f_buffer[BLOCK_INDEX + NW] = f_buffer[BLOCK_INDEX + SE];
 	} else if (DR[INDEX]) {
 		for (int i=0; i<9; i++) {
-			f_buffer[BLOCK_INDEX].direction[i] = feq_buffer[BLOCK_INDEX].direction[i];
+			f_buffer[BLOCK_INDEX + (i*32)] = feq_buffer[BLOCK_INDEX + (i*32)];
 		}
 	} else {
 		for (int i=0; i<9; i++) {
-			f_buffer[BLOCK_INDEX].direction[i] = f_buffer[BLOCK_INDEX].direction[i] * (1. - 1. / tau) + feq_buffer[BLOCK_INDEX].direction[i] / tau;
+			f_buffer[BLOCK_INDEX + (i*32)] = f_buffer[BLOCK_INDEX + (i*32)] * (1. - 1. / tau) + feq_buffer[BLOCK_INDEX + (i*32)] / tau;
 		}
 	}
 
 	__syncthreads();
 
 	// Writing back to global memory
-	f[INDEX] = f_buffer[BLOCK_INDEX];
-	feq[INDEX] = feq_buffer[BLOCK_INDEX];
+	directions_t cell_f, cell_feq;
+	for (int i=0; i<9; i++) {
+		cell_f.direction[i] = f_buffer[BLOCK_INDEX + (i*32)];
+		cell_feq.direction[i] = feq_buffer[BLOCK_INDEX + (i*32)];
+	}
+
+	f[INDEX] = cell_f;
+	feq[INDEX] = cell_feq;
 }
 
 __global__ void collision_step (
