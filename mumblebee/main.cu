@@ -575,53 +575,6 @@ int main (int argc, char** argv){
 	//============ MAIN LOOP =============
 	
 	for(int i=0; i<iter; i++) {
-<<<<<<< HEAD
-		collision_step_shared<<<grid, threads, BLOCK_SIZE * BLOCK_SIZE * sizeof(directions_t) * 2>>>(
-			d_f,
-			d_feq,
-			d_rho,
-			d_ux,
-			d_uy,
-			d_usqr,
-			d_DR,
-			d_WALL,
-			d_FL,
-			u_0,
-			tau,
-			BLOCK_SIZE*BLOCK_SIZE
-		);
-		fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
-
-		/* collision_step<<<grid, threads>>>(
-			d_f,
-			d_feq,
-			d_rho,
-			d_ux,
-			d_uy,
-			d_usqr,
-			d_DR,
-			d_WALL,
-			d_FL,
-			u_0,
-			tau
-		); */
-
-		// cudaMemcpy(f, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToHost);
-		// printdirection(f, nx, ny);
-		// index_testing<<<dimGrid, dimBlock>>>(
-		// 	d_f,
-		// 	d_WALL
-		// );
-
-		/* propagation_step_shared<<<grid, threads, nx*ny*sizeof(directions_t)>>>(
-			d_f,
-			d_fswap,
-			nx,
-			ny
-		); */
-
-		// fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
-=======
 		if (is_shared) {
 			collision_step_shared<<<grid, threads, TILE_SIZE * TILE_SIZE * sizeof(directions_t) * 2>>>(
 				d_f,
@@ -652,7 +605,6 @@ int main (int argc, char** argv){
 				tau
 			);
 		}
->>>>>>> 56bc970bdcb4a8a55f564d45c05b210832c47434
 
 		propagation_step<<<grid, threads>>>(
 			d_f,
