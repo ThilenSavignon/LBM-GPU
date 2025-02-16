@@ -1,79 +1,69 @@
 #!/bin/bash
 
-# Le script doit être exécuté avec les arguments suivants:
-# $ ./do.sh <nx> <ny> [iter] [shared]
-# avec:
-# - nx: nombre de colonnes
-# - ny: nombre de lignes
-# - iter: nombre d'itérations (optionnel, par défaut 3000)
-# - shared: 1 pour activer le partage de mémoire, 0 sinon (optionnel, par défaut 0)
-
 make clean
 
 shared=''
-iter=3000  # Valeur par défaut pour le nombre d'itérations
+iter=3000  # Default number of iterations
 
-# Vérifier si les arguments sont corrects
+# Verify if the arguments are correct
 if [ "$#" -lt 2 ]; then
-    echo "Erreur : Le script doit être exécuté avec les arguments suivants :"
-    echo "  $ ./do.sh <config.txt> [iter] [shared]"
-    echo "avec :"
-    echo "  - nx : nombre de colonnes"
-    echo "  - ny : nombre de lignes"
-    echo "  - iter : nombre d'itérations (optionnel, par défaut 3000)"
-    echo "  - shared : s pour activer le partage de mémoire"
+    echo "Error: The script must be executed with the following arguments:"
+    echo "  $ ./do.sh <config_file> [iter] [shared]"
+    echo "with:"
+    echo "  - config_file : is the a file containing the number of columns and rows at the first line and the configuration of the matrix at the following lines"
+    echo "  - iter : number of iterations (optional)"
+    echo '  - shared : "s" to enable shared memory (optional)'
     exit 1
-else
-    config=$1
+fi
+config=$1
 
-    # Vérifier l'argument shared
-    if [ "$#" -ge 2 ] && [ "$2" == "s" ]; then
+# Verify the 'iter' and 'shared' arguments
+if [ "$#" -ge 2 ] && [ "$2" == "s" ]; then
+    shared="--s"
+    if [ "$#" -eq 3 ]; then
+        iter="$3"
+    fi
+elif [ "$#" -ge 2 ]; then
+    iter="$2"
+    if [ "$#" -eq 3 ] && [ "$3" == "s" ]; then
         shared="--s"
-        if [ "$#" -eq 3 ]; then
-            iter="$3"
-        fi
-    elif [ "$#" -ge 2 ]; then
-        iter="$2"
-        if [ "$#" -eq 3 ] && [ "$3" == "s" ]; then
-            shared="--s"
-        fi
     fi
 fi
 
-# On make le programme
+# Make the program
 make
 
-# Vérifier si le programme a bien été compilé
+# Verify if the program was compiled correctly
 if [ ! -f "main" ]; then
-    echo "Erreur : Le programme 'main' n'a pas été compilé."
+    echo "Error: The 'main' program was not compiled."
     exit 1
 fi
 
-# Si les fichier 'out.txt', 'plot.gp' et 'out.png' existent, les supprimer
+# If the 'gif' folder exists, delete it and recreate it
 rm -f out.txt plot.gp out.png
 touch out.txt plot.gp out.png
 
 chmod 777 out.txt plot.gp out.png
 
-# Afficher la commande à exécuter
-echo "Commande : ./main --f=$config --i=$iter $shared > out.txt"
+# Print the command to be executed
+echo "Command : ./main --f=$config --i=$iter $shared > out.txt"
 
-# Lancer le programme principal
+# Run the 'main' program
 if ! ./main --f=$config --i=$iter $shared > out.txt; then
-    echo "Erreur : Le programme 'main' n'a pas été exécuté correctement."
+    echo "Error: The 'main' program failed to run."
     exit 1
 fi
 
-# Vérifier si le programme a bien généré le fichier 'out.txt'
+# Verify if the 'out.txt' file was generated
 if [ ! -f "out.txt" ]; then
-    echo "Erreur : Le fichier 'out.txt' n'a pas été généré."
+    echo "Error: The 'out.txt' file was not generated."
     exit 1
 fi
 
 read nx ny < $config
 echo "$nx $ny"
 
-# Créer le fichier de script Gnuplot dynamique
+# Create a Gnuplot script to plot the data
 cat <<EOL > plot.gp
 set terminal pngcairo size 800,600
 set output 'out.png'
@@ -81,31 +71,31 @@ set pm3d map
 set palette model RGB defined (0 "black", 1 "blue", 2 "green", 3 "yellow", 4 "red")
 unset colorbox
 
-# Ajuster la taille de l'affichage sans marges supplémentaires
-set size ratio -1  # Force un ratio d'aspect exact (sans distorsion)
+# Fix the aspect ratio of the plot
+set size ratio -1 
 
-# Définir dynamiquement les limites en fonction des arguments
+# Define the range of the plot
 set xrange [0:$nx]   # Largeur de la matrice
 set yrange [0:$ny]   # Hauteur de la matrice
 
-# Tracer les données avec l'option 'matrix' pour ajuster les pixels précisément
+# Title of the plot
 splot 'out.txt' matrix with image
 EOL
 
-# Lancer le script Gnuplot
+# Run Gnuplot to generate the image
 gnuplot plot.gp
 
-# Vérifier si l'image a bien été générée
+# Verify if the 'out.png' file was generated
 if [ ! -f "out.png" ]; then
-    echo "Erreur : L'image 'out.png' n'a pas été générée."
+    echo "Error: The 'out.png' file was not generated."
     exit 1
 fi
 
-# Afficher l'image générée
+# Open the image with the default image viewer
 xdg-open out.png
 
-# Nettoyer les fichiers temporaires
+# Clean up the files
 rm -f out.txt plot.gp
 
-# Fin du script
-echo "Le script a terminé avec succès."
+# Print a success message
+echo "Success: The program was executed successfully."
