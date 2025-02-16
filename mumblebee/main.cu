@@ -505,7 +505,7 @@ int main (int argc, char** argv){
 	dim3 grid;
 
 	if(is_shared) {
-		printf("Using shared memory\n");
+		// printf("Using shared memory\n");
 		threads = dim3(TILE_SIZE, TILE_SIZE);
 		grid = dim3(nx / TILE_SIZE, ny / TILE_SIZE);
 	} else {
@@ -616,7 +616,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(FL, d_FL, nx*ny*sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
-	// print_matrix(usqr, nx*ny);
+	print_matrix(usqr, nx*ny);
 	std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
 
 	delete[] mesh;
