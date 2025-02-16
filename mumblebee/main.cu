@@ -6,7 +6,8 @@
 #include "args.hxx" // Pour parser les arguments
 
 // initialisation des blocs
-#define BLOCK_SIZE 16
+#define TILE_SIZE 16
+#define BLOCK_SIZE 32
 
 
 // initialisation des directions
@@ -408,7 +409,7 @@ int main (int argc, char** argv){
 	args::ValueFlag<int> width(parser, "width", "Width of matrix ", {"w"}, 32);
 	args::ValueFlag<int> height(parser, "height", "Height of matrix ", {"h"},32);
 	args::ValueFlag<int> iterations(parser, "iteration", "Number of iterations", {"i"}, 3000);
-	// args::Flag is_shared(parser, "shared", "Use shared memory", {"s"});
+	args::Flag is_shared(parser, "shared", "Use shared memory", {"s"});
 
 	// Invoke parser
 	try {
@@ -494,18 +495,7 @@ int main (int argc, char** argv){
 
 		fclose(file);
 
-		// printf("Matrice lue :\n");
-		// for (int i = 0; i < ny*nx; i++) {
-		// 	if (i % nx == 0) {
-		// 		printf("\n");
-		// 	}
-		// 	printf("%d ", matrix[i]);
-		// }
-
 	}
-
-	// std::cout << "nx = " << nx << std::endl;
-	// std::cout << "ny = " << ny << std::endl;
 	
 	//================= CUDA =================
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
@@ -583,10 +573,9 @@ int main (int argc, char** argv){
 	
 	cudaMemcpy(d_fswap, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToDevice);
 	//============ MAIN LOOP =============
-
-	// fprintf(stdout, "Shared memory size: %lu\n", BLOCK_SIZE * BLOCK_SIZE * sizeof(directions_t) * 2);
 	
 	for(int i=0; i<iter; i++) {
+<<<<<<< HEAD
 		collision_step_shared<<<grid, threads, BLOCK_SIZE * BLOCK_SIZE * sizeof(directions_t) * 2>>>(
 			d_f,
 			d_feq,
@@ -632,6 +621,38 @@ int main (int argc, char** argv){
 		); */
 
 		// fprintf(stderr, "%d\t[CUDA]: %s\n", i, cudaGetErrorString(cudaGetLastError()));
+=======
+		if (is_shared) {
+			collision_step_shared<<<grid, threads, TILE_SIZE * TILE_SIZE * sizeof(directions_t) * 2>>>(
+				d_f,
+				d_feq,
+				d_rho,
+				d_ux,
+				d_uy,
+				d_usqr,
+				d_DR,
+				d_WALL,
+				d_FL,
+				u_0,
+				tau,
+				TILE_SIZE*TILE_SIZE
+			);
+		} else {
+			collision_step<<<grid, threads>>>(
+				d_f,
+				d_feq,
+				d_rho,
+				d_ux,
+				d_uy,
+				d_usqr,
+				d_DR,
+				d_WALL,
+				d_FL,
+				u_0,
+				tau
+			);
+		}
+>>>>>>> 56bc970bdcb4a8a55f564d45c05b210832c47434
 
 		propagation_step<<<grid, threads>>>(
 			d_f,
@@ -644,9 +665,6 @@ int main (int argc, char** argv){
 		d_ftmp = d_fswap;
 		d_fswap = d_f;
 		d_f = d_ftmp;
-
-		// d_ftmp = d_fswap;
-		// d_fswap = d_ftmp;
 		cudaEventRecord(stop);
 
 		cudaEventSynchronize(stop);
@@ -671,11 +689,7 @@ int main (int argc, char** argv){
 	cudaMemcpy(mesh,d_mesh, nx*ny*sizeof(int),cudaMemcpyDeviceToHost);
 
 	print_matrix(usqr, nx*ny);
-	// std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
-
-	// printdirection(f, nx, ny);
-	// printData(nx, ny, iter, Re, rho_0, u_0, viscosity, tau, mesh, f, feq, rho, ux, uy, usqr, DR, WALL, FL);
-	//=============== END ================
+	std::cout << "Elapsed time: " << elapsedTime << "ms" << std::endl;
 
 	delete[] mesh;
 	delete[] f;
