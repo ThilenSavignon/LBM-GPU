@@ -1,14 +1,4 @@
 config romain:
--iter GPU global
-    - 575ms (256/256 3000 it)
-    - 5164ms (256/256 30000 it)
-    - 9469ms (1024/1024 3000 it)
-    - 96780ms (1024/1024 30000 it)
--iter GPU global Float precision
-    - 502ms (256/256 3000 it)
-    - 3870ms (256/256 30000 it)
-    - 6052ms (1024/1024 3000 it)
-    - 60977ms (1024/1024 30000 it)
 
 -full GPU global
     - 580ms (256/256 3000 it)
@@ -31,10 +21,3 @@ config romain:
     - 3452ms (256/256 30000 it)
     - 5195ms (1024/1024 3000 it)
     - 52558ms (1024/1024 30000 it)
-
-config nash:
-    - 1419.18ms (256/256 3000 it)
-
-config pc:
-    - 7845.42ms (256/256 3000 it)
-
