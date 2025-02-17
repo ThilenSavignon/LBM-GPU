@@ -1,109 +1,117 @@
-# LBM-GPU
+# CUDA Implementation of the 2D Lattice-Boltzmann Method on GPUs
 
-## CUDA Implementation of the 2D Squared Lattice-Boltzmann Method
+## Overview
+This project presents a CUDA-based implementation of the 2D Lattice-Boltzmann Method (LBM) optimized for NVIDIA GPUs. Leveraging CUDA capabilities, this implementation ensures efficient parallel processing, making it suitable for high-performance simulations.
 
-This project provides a CUDA-based implementation of the 2D squared Lattice-Boltzmann Method (LBM) designed to run efficiently on NVIDIA GPUs.
+### Authors
+- **Romain Alves**  (romalves70@gmail.com)
+- **Thilen Savignon**
+- **Julien Houny**
 
 ---
 
 ## Requirements
-- **CUDA (latest version)**
-- **Python 3**
-  - Required Python libraries:
-    - `subprocess`
-    - `matplotlib`
-    - `tqdm`
-    - `re`
+- **CUDA 12.6+**
+- **g++ 11+**
+- **Python 3** with the following libraries:
+  - `subprocess`
+  - `matplotlib`
+  - `tqdm`
+  - `re`
+- **gnuplot** for visualization
 
-Ensure that you have the latest CUDA drivers installed and a functional Python 3 environment with the specified libraries.
+Ensure that the latest CUDA drivers are installed along with a compatible Python environment.
+
+---
+
+## Compilation
+A `Makefile` is provided for compiling the project. To compile, run:
+```sh
+make
+```
+in the project directory.
+
+---
+
+## Execution
+The program can be executed with:
+```sh
+./main --args=value
+```
+For a full list of command-line arguments, use:
+```sh
+./main -h
+```
+or
+```sh
+./main --help
+```
 
 ---
 
 ## Shell Scripts
+Several shell scripts are provided to streamline execution:
 
-There are three main shell scripts included in the project, each with specific functionalities.
-
-### 1. Script for Displaying an Example Simulation
-**Usage:**
+### 1. Running an Example Simulation
 ```sh
 $ ./Exec.sh <nx> <ny> [iter] [shared]
 ```
-- **nx**: Number of columns (must be a multiple of 32 and greater than 32)
-- **ny**: Number of rows (must be a multiple of 32 and greater than 32)
-- **iter**: Number of iterations (optional)
-- **shared**: Use "s" to enable shared memory optimizations (optional but highly recommended for performance)
+- `nx`, `ny`: Grid dimensions (must be multiples of 32 and > 32)
+- `iter`: Number of iterations (optional)
+- `shared`: Use "s" to enable shared memory optimization (optional, highly recommended)
 
-**Note:** This script displays an example simulation with the specified dimensions.
-
----
-
-### 2. Script for Running with a Configuration File
-**Usage:**
+### 2. Running with a Configuration File
 ```sh
 $ ./Exec_config.sh <config_file> [iter] [shared]
 ```
-- **config_file**: Path to a configuration file containing the number of columns and rows on the first line, followed by the matrix configuration.
-- **iter**: Number of iterations (optional)
-- **shared**: Use "s" to enable shared memory optimizations (optional but highly recommended for performance)
+- `config_file`: Path to a TXT configuration file specifying dimensions and matrix configuration.
+- `iter`, `shared`: As described above.
 
-**Note:** The configuration file should follow the format provided in the `example_config` file.
-
----
-
-### 3. Script for Generating a GIF Output
-**Usage:**
+### 3. Generating a GIF Output
 ```sh
 $ ./GiFi.sh <nx> <ny> [shared]
 ```
-- **nx**: Number of columns (must be a multiple of 32 and greater than 32)
-- **ny**: Number of rows (must be a multiple of 32 and greater than 32)
-- **shared**: Use "s" to enable shared memory optimizations (optional but highly recommended for performance)
-
-**Note:** This script generates a GIF of the simulation. Be aware that this process may take a considerable amount of time.
+- `nx`, `ny`, `shared`: As described above.
 
 ---
 
-## Important Note on Shared Memory Usage
-To enable shared memory optimization, you **must** pass the argument "s" when executing any of the shell scripts. This ensures that the CUDA kernels utilize shared memory, resulting in significantly improved performance.
+## Configuration File Format
+Configuration files are TXT files structured as follows:
+```
+<size-x> <size-y>
+m_0_0 ... m_size-x_0
+...
+m_0_size-y ... m_size-x_size-y
+```
+Where `m_x_y` represents cell types:
+- `0`: Fluid cell
+- `1`: Wall cell
+- `2`: Driving cell
 
----
-
-## Benchmarking Script
-A Python script named `Benchmark.py` is provided to calculate the efficiency of the GPU implementation.
-
-**Required Python libraries:**
-- `subprocess`
-- `matplotlib.pyplot`
-- `tqdm`
-- `re`
-
-The benchmarking script is designed to measure execution times and generate efficiency graphs, making it easier to analyze the performance of the LBM implementation across different configurations.
-
----
-
-## Example Configuration File (`example_config`)
+Example:
 ```
 64 64
-0 1 0 1 0 1 0 1 ...
-1 0 1 0 1 0 1 0 ...
+0 1 0 1 ...
+1 0 1 0 ...
 ...
 ```
-The first line specifies the dimensions (nx and ny), followed by the matrix configuration.
+
+---
+
+## Shared Memory Optimization
+To utilize shared memory for better performance, include the "s" argument when executing the scripts. Note that the program supports grid sizes in multiples of CUDA block sizes (32 without shared memory, 16 with shared memory). Non-compliant sizes will result in undefined behavior.
+
+---
+
+## Benchmarking
+A `Benchmark.py` script is provided to measure GPU efficiency, execution times, and generate performance graphs.
 
 ---
 
 ## Final Notes
-- Ensure that all input dimensions (nx and ny) are multiples of 32 and greater than 32.
-- Always pass "s" as an argument in the shell scripts to utilize shared memory for better performance.
-- Use the provided `Benchmark.py` script to evaluate the performance of your simulations.
+- Ensure input dimensions are multiples of 32 and > 32.
+- Use the "s" argument for shared memory.
+- Utilize `Benchmark.py` for performance evaluation.
 
----
+This CUDA implementation facilitates efficient LBM simulations with comprehensive configurability and visualization tools.
 
-This CUDA implementation leverages the power of GPUs to efficiently simulate the Lattice-Boltzmann Method in 2D, offering configurability, performance optimizations, and visualization options through shell scripts and Python benchmarking tools.
-
----
-
-### Author
-Romain Alves
-
-Do not hesitate to contact me if you have any problems: romalves70@gmail.com
