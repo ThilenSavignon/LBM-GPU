@@ -457,7 +457,7 @@ int main (int argc, char** argv){
 		fclose(file);
 
 	}
-		
+
 	Re=1000; // nombre de Reynolds
 
     // initialisation des variables
@@ -466,7 +466,7 @@ int main (int argc, char** argv){
     u_0 = 0.1; // vitesse initiale
 	viscosity = (ny-1)*u_0/Re; // viscosite
     tau = (6*viscosity+1)/2; // relaxation time
-	
+
     // initialisation de la grille de la simulation
     int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
     
@@ -484,7 +484,7 @@ int main (int argc, char** argv){
 	DR = new bool[nx*ny]; // driving fluid
 	WALL = new bool[nx*ny]; // wall
 	FL = new bool[nx*ny]; // fluid
-	
+
 	//================= CUDA =================
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
 	float *d_rho, *d_ux, *d_uy, *d_usqr;
