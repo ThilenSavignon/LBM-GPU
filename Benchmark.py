@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm  # Import de la barre de progression
 import re  # Pour extraire le temps
 
-executable = "../main"
+executable = "./main"
 labels = ["Shared", "Global"]
 resolutions = [(256, 256), (1024, 1024)]
 iterations = [3000 * i for i in range(1, 11)]

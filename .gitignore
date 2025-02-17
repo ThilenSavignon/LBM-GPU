@@ -1,14 +1,4 @@
 .idea/
-.idea/*
 .vscode/
 .git/
-objs/
-*.i
-*.ii
-*.gpu
-*.ptx
-*.cubin
-*.fatbin
-*.raw
-*.png
 *.o

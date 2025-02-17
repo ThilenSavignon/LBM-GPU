@@ -149,7 +149,12 @@ __global__ void collision_step_shared (
 	bool *FL,
 	float u_0,
 	float tau,
-	int nf) {
+	int nf,
+	int nx,
+	int ny) {
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
+	}
 	
 	// Shared memory initialization
 	extern __shared__ directions_t ffeq_buffer[];
@@ -169,6 +174,10 @@ __global__ void collision_step_shared (
 	}
 
 	// Macroscopic velocities
+	if (rho[INDEX] == 0) {
+		// we replace 0 by the smallest positive number
+		rho[INDEX] = 1e-10;
+	}
 	ux[INDEX] = (DR[INDEX] ? u_0 : (f_buffer[BLOCK_INDEX].e - f_buffer[BLOCK_INDEX].w + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw - f_buffer[BLOCK_INDEX].nw) / rho[INDEX]);
 	uy[INDEX] = (DR[INDEX] ? 0 : (f_buffer[BLOCK_INDEX].n - f_buffer[BLOCK_INDEX].s + f_buffer[BLOCK_INDEX].ne + f_buffer[BLOCK_INDEX].nw - f_buffer[BLOCK_INDEX].se - f_buffer[BLOCK_INDEX].sw) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
@@ -198,6 +207,10 @@ __global__ void collision_step_shared (
 		}
 	} else {
 		for (int i=0; i<9; i++) {
+			if (tau == 0) {
+				// we replace 0 by the smallest positive number
+				tau = 1e-10;
+			}
 			f_buffer[BLOCK_INDEX].direction[i] = f_buffer[BLOCK_INDEX].direction[i] * (1. - 1. / tau) + feq_buffer[BLOCK_INDEX].direction[i] / tau;
 		}
 	}
@@ -220,7 +233,12 @@ __global__ void collision_step (
 	bool *WL,
 	bool *FL,
 	float u_0,
-	float tau) {
+	float tau,
+	int nx,
+	int ny) {
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
+	}
 	
 	// Macroscopic density
 	rho[INDEX] = 0;
@@ -229,6 +247,10 @@ __global__ void collision_step (
 	}
 
 	// Macroscopic velocities
+	if (rho[INDEX] == 0) {
+		// we replace 0 by the smallest positive number
+		rho[INDEX] = 1e-10;
+	}
 	ux[INDEX] = (DR[INDEX] ? u_0 : (f[INDEX].e - f[INDEX].w + f[INDEX].ne + f[INDEX].se - f[INDEX].sw - f[INDEX].nw) / rho[INDEX]);
 	uy[INDEX] = (DR[INDEX] ? 0 : (f[INDEX].n - f[INDEX].s + f[INDEX].ne + f[INDEX].nw - f[INDEX].se - f[INDEX].sw) / rho[INDEX]);
 	usqr[INDEX] = ux[INDEX] * ux[INDEX] + uy[INDEX] * uy[INDEX];
@@ -258,55 +280,34 @@ __global__ void collision_step (
 		}
 	} else {
 		for (int i=0; i<9; i++) {
+			if (tau == 0) {
+				// we replace 0 by the smallest positive number
+				tau = 1e-10;
+			}
 			f[INDEX].direction[i] = f[INDEX].direction[i] * (1. - 1. / tau) + feq[INDEX].direction[i] / tau;
 		}
 	}
 }
 
-__global__ void propagation_step_shared(directions_t *f_src, directions_t *f_dst, int nx, int ny) {
-	extern __shared__ directions_t buffer[];
-
-	if(INDEX_X < nx-1)	buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y)].e = f_src[INDEX].e;
-	if(INDEX_X > 0)		buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y)].w = f_src[INDEX].w;
-	if(INDEX_Y < ny-1)	buffer[INDEX_FROM(INDEX_X, INDEX_Y + 1)].s = f_src[INDEX].s;
-	if(INDEX_Y > 0)		buffer[INDEX_FROM(INDEX_X, INDEX_Y - 1)].n = f_src[INDEX].n;
-	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)].se = f_src[INDEX].se;
-	if(INDEX_X < nx-1 && INDEX_Y > 0)		buffer[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)].ne = f_src[INDEX].ne;
-	if(INDEX_X > 0 && INDEX_Y < ny-1)		buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
-	if(INDEX_X > 0 && INDEX_Y > 0)			buffer[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
-
-	__syncthreads();
-
-	f_dst[INDEX] = buffer[INDEX];
-
-	// Maybe useless
-	__syncthreads();
-}
-
 __global__ void propagation_step(directions_t *f_src, directions_t *f_dst, int nx, int ny) {
-	if(INDEX_X < nx-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y)].e = f_src[INDEX].e;
-	if(INDEX_X > 0)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y)].w = f_src[INDEX].w;
-	if(INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X, INDEX_Y + 1)].s = f_src[INDEX].s;
-	if(INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X, INDEX_Y - 1)].n = f_src[INDEX].n;
-	if(INDEX_X < nx-1 && INDEX_Y < ny-1)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)].se = f_src[INDEX].se;
-	if(INDEX_X < nx-1 && INDEX_Y > 0)		f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)].ne = f_src[INDEX].ne;
-	if(INDEX_X > 0 && INDEX_Y < ny-1)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
-	if(INDEX_X > 0 && INDEX_Y > 0)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
-
-}
-
-__global__ void index_testing(directions_t *f, bool *WL) {
-	for(int i=0; i<9; i++) {
-		if (WL[INDEX]) {
-			f[INDEX].direction[i] = INDEX;
-		} else {
-			f[INDEX].direction[i] = 0;
-		}
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
 	}
+	if(INDEX_X < nx-1 && INDEX_FROM(INDEX_X + 1, INDEX_Y) < nx*ny)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y)].e = f_src[INDEX].e;
+	if(INDEX_X > 0 && INDEX_FROM(INDEX_X - 1, INDEX_Y) < nx*ny)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y)].w = f_src[INDEX].w;
+	if(INDEX_Y < ny-1 && INDEX_FROM(INDEX_X, INDEX_Y+1) < nx*ny)	f_dst[INDEX_FROM(INDEX_X, INDEX_Y + 1)].s = f_src[INDEX].s;
+	if(INDEX_Y > 0 && INDEX_FROM(INDEX_X, INDEX_Y-1) < nx*ny)		f_dst[INDEX_FROM(INDEX_X, INDEX_Y - 1)].n = f_src[INDEX].n;
+	if(INDEX_X < nx-1 && INDEX_Y < ny-1 && INDEX_FROM(INDEX_X+1, INDEX_Y+1) < nx*ny)	f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y + 1)].se = f_src[INDEX].se;
+	if(INDEX_X < nx-1 && INDEX_Y > 0 && INDEX_FROM(INDEX_X+1, INDEX_Y-1) < nx*ny)		f_dst[INDEX_FROM(INDEX_X + 1, INDEX_Y - 1)].ne = f_src[INDEX].ne;
+	if(INDEX_X > 0 && INDEX_Y < ny-1 && INDEX_FROM(INDEX_X-1, INDEX_Y+1) < nx*ny)		f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y + 1)].sw = f_src[INDEX].sw;
+	if(INDEX_X > 0 && INDEX_Y > 0 && INDEX_FROM(INDEX_X-1, INDEX_Y-1) < nx*ny)			f_dst[INDEX_FROM(INDEX_X - 1, INDEX_Y - 1)].nw = f_src[INDEX].nw;
+
 }
 
 __global__ void init_mesh(int *mesh, int nx, int ny){
-
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
+	}
 	if(INDEX < ny)
 		mesh[INDEX]=2; // le fluide est injecté à gauche
 	else if (INDEX % ny == 0 || INDEX % ny == ny-1 || INDEX > nx*ny-ny)
@@ -323,8 +324,13 @@ __global__ void init_sim(
 	float *ux,
 	float *uy,
 	float *usqr,
-	float rho_0
+	float rho_0,
+	int nx,
+	int ny
 	){
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
+	}
 
 	for(int j = 0; j<9; j++) {
 		feq[INDEX].direction[j] = 0;
@@ -351,7 +357,13 @@ __global__ void init_fluid(
 	int *mesh,
 	bool *DR,
 	bool *WL,
-	bool *FL){
+	bool *FL,
+	int nx,
+	int ny
+	){
+	if(INDEX_X >= nx || INDEX_Y >= ny || INDEX >= nx*ny) {
+		return;
+	}
 	
 	if(mesh[INDEX]==0){
 		FL[INDEX] = true;
@@ -413,34 +425,7 @@ int main (int argc, char** argv){
 		iter = args::get(iterations);
 	else
 		iter = 60000;
-	Re=1000; // nombre de Reynolds
 
-    // initialisation des variables
-    float  rho_0, u_0, viscosity, tau;
-    rho_0 = 1; // densite initiale
-    u_0 = 0.1; // vitesse initiale
-	viscosity = (ny-1)*u_0/Re; // viscosite
-    tau = (6*viscosity+1)/2; // relaxation time
-	
-
-    // initialisation de la grille de la simulation
-    int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
-    
-    directions_t *f, *feq;
-	float *rho, *ux, *uy, *usqr;
-	f = new directions_t[nx*ny]; // distribution function
-	feq = new directions_t[nx*ny]; // equilibrium distribution function
-	rho = new float[nx*ny]; // macroscopic density
-	ux = new float[nx*ny]; // macroscopic velocity in direction x
-	uy = new float[nx*ny]; // macroscopic velocity in direction y
-	usqr = new float[nx*ny]; // helper variable
-
-
-	bool *DR, *WALL, *FL;
-	DR = new bool[nx*ny]; // driving fluid
-	WALL = new bool[nx*ny]; // wall
-	FL = new bool[nx*ny]; // fluid
-	
 	std::string path = args::get(importfile);
 	if (!path.empty()) {
 		FILE *file = fopen(path.c_str(), "r");
@@ -472,6 +457,33 @@ int main (int argc, char** argv){
 		fclose(file);
 
 	}
+		
+	Re=1000; // nombre de Reynolds
+
+    // initialisation des variables
+    float  rho_0, u_0, viscosity, tau;
+    rho_0 = 1; // densite initiale
+    u_0 = 0.1; // vitesse initiale
+	viscosity = (ny-1)*u_0/Re; // viscosite
+    tau = (6*viscosity+1)/2; // relaxation time
+	
+    // initialisation de la grille de la simulation
+    int* mesh = new int[nx*ny]; // 0 = fluid, 1 = wall, 2 = driving fluid
+    
+    directions_t *f, *feq;
+	float *rho, *ux, *uy, *usqr;
+	f = new directions_t[nx*ny]; // distribution function
+	feq = new directions_t[nx*ny]; // equilibrium distribution function
+	rho = new float[nx*ny]; // macroscopic density
+	ux = new float[nx*ny]; // macroscopic velocity in direction x
+	uy = new float[nx*ny]; // macroscopic velocity in direction y
+	usqr = new float[nx*ny]; // helper variable
+
+
+	bool *DR, *WALL, *FL;
+	DR = new bool[nx*ny]; // driving fluid
+	WALL = new bool[nx*ny]; // wall
+	FL = new bool[nx*ny]; // fluid
 	
 	//================= CUDA =================
 	directions_t *d_f, *d_fswap, *d_feq, *d_ftmp;
@@ -507,10 +519,10 @@ int main (int argc, char** argv){
 	if(is_shared) {
 		// printf("Using shared memory\n");
 		threads = dim3(TILE_SIZE, TILE_SIZE);
-		grid = dim3(nx / TILE_SIZE, ny / TILE_SIZE);
+		grid = dim3((nx + TILE_SIZE - 1) / TILE_SIZE, (ny + TILE_SIZE - 1) / TILE_SIZE);
 	} else {
 		threads = dim3(BLOCK_SIZE, BLOCK_SIZE);
-		grid = dim3(nx / BLOCK_SIZE, ny / BLOCK_SIZE);
+		grid = dim3((nx + BLOCK_SIZE - 1) / BLOCK_SIZE, (ny + BLOCK_SIZE - 1) / BLOCK_SIZE);
 	}
 
 	if(path.empty()) {
@@ -536,7 +548,9 @@ int main (int argc, char** argv){
 		d_ux,
 		d_uy,
 		d_usqr,
-		rho_0
+		rho_0,
+		nx,
+		ny
 	);
 	
 	
@@ -544,7 +558,9 @@ int main (int argc, char** argv){
 		d_mesh,
 		d_DR,
 		d_WALL,
-		d_FL
+		d_FL,
+		nx,
+		ny
 	);
 	
 	cudaMemcpy(d_fswap, d_f, nx*ny*sizeof(directions_t), cudaMemcpyDeviceToDevice);
@@ -564,7 +580,9 @@ int main (int argc, char** argv){
 				d_FL,
 				u_0,
 				tau,
-				TILE_SIZE*TILE_SIZE
+				TILE_SIZE*TILE_SIZE,
+				nx,
+				ny
 			);
 		} else {
 			collision_step<<<grid, threads>>>(
@@ -578,7 +596,9 @@ int main (int argc, char** argv){
 				d_WALL,
 				d_FL,
 				u_0,
-				tau
+				tau,
+				nx,
+				ny
 			);
 		}
 

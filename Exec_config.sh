@@ -60,10 +60,17 @@ if [ ! -f "out.txt" ]; then
     exit 1
 fi
 
+# Get the last line of the output
+last_line=$(tail -n 2 out.txt)
+
+# Read nx and ny values from the config file
 read nx ny < $config
 echo "$nx $ny"
 
-# Create a Gnuplot script to plot the data
+# Create a temporary file with all but the last line of out.txt
+head -n -1 out.txt > temp_out.txt
+
+# Create a Gnuplot script to plot the data from the temporary file
 cat <<EOL > plot.gp
 set terminal pngcairo size 800,600
 set output 'out.png'
@@ -78,8 +85,8 @@ set size ratio -1
 set xrange [0:$nx]   # Largeur de la matrice
 set yrange [0:$ny]   # Hauteur de la matrice
 
-# Title of the plot
-splot 'out.txt' matrix with image
+# Plot the data from the temporary file
+splot 'temp_out.txt' matrix with image
 EOL
 
 # Run Gnuplot to generate the image
@@ -95,7 +102,9 @@ fi
 xdg-open out.png
 
 # Clean up the files
-rm -f out.txt plot.gp
+rm -f out.txt plot.gp temp_out.txt
 
 # Print a success message
 echo "Success: The program was executed successfully."
+echo $last_line
+

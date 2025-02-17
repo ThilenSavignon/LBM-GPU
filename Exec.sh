@@ -71,7 +71,11 @@ fi
 # Get the last line of the output
 last_line=$(tail -n 2 out.txt)
 
-# Create a Gnuplot script to plot the data
+
+# Create a temporary file with all but the last line of out.txt
+head -n -1 out.txt > temp_out.txt
+
+# Create a Gnuplot script to plot the data from the temporary file
 cat <<EOL > plot.gp
 set terminal pngcairo size 800,600
 set output 'out.png'
@@ -79,15 +83,15 @@ set pm3d map
 set palette model RGB defined (0 "black", 1 "blue", 2 "green", 3 "yellow", 4 "red")
 unset colorbox
 
-# Fix the ratio of the plot
-set size ratio -1  
+# Fix the aspect ratio of the plot
+set size ratio -1 
 
 # Define the range of the plot
 set xrange [0:$nx]   # Largeur de la matrice
 set yrange [0:$ny]   # Hauteur de la matrice
 
-# Plot the data from the 'out.txt' file (excluding the last line)
-splot '< tail -n +1 out.txt | head -n -1' matrix with image
+# Plot the data from the temporary file
+splot 'temp_out.txt' matrix with image
 EOL
 
 # Run the Gnuplot script
@@ -102,8 +106,8 @@ fi
 # Display the generated image
 xdg-open out.png
 
-# Clean the temporary files
-rm -f out.txt plot.gp
+# Clean up the files
+rm -f out.txt plot.gp temp_out.txt
 
 # Display the last line of the output
 echo "Script ended successfully."
